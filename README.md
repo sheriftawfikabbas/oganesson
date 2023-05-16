@@ -47,7 +47,7 @@ for i in range(10):
 
 ## Generation of the diffusion path for NEB calculations
 
-The most painful part of doing transition state calculations in VASP is in building the images. The following code makes this happen in 2 lines of code. You only need to specify the structure file, and the atomic species you want to diffuse, and OgStructure will generate a folder for each path, and writes the POSCAR image files in each of these folders.
+The most painful part of doing transition state calculations in VASP is in building the images. The following code makes this happen in 2 lines of code. You only need to specify the structure file, and the atomic species you want to diffuse, and OgStructure will generate a folder for each path, and then write the POSCAR image files in each of these folders.
 
 ```python
 from oganesson.ogstructure import OgStructure
