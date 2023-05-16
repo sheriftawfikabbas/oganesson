@@ -155,3 +155,6 @@ test.ipynb
 ./*.cif
 ./*.vasp
 neb_path_*/
+./*.traj
+./*.json
+./*.vasp
