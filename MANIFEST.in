@@ -1,0 +1,6 @@
+include README.md
+include LICENSE
+include CONTRIBUTING.rst
+include CHANGELOG.md
+include VERSION
+include oganesson/VERSION

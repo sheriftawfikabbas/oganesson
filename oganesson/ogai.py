@@ -1,0 +1,2 @@
+class OgAI:
+    pass
