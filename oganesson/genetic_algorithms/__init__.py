@@ -93,10 +93,14 @@ class GA:
                                     2., 5.], use_tags=False)
         self.operators = OperationSelector([4., 3., 3.],
                                            [self.pairing, self.softmut, self.strainmut])
-
-        self.path = 'relaxed/'
+        import uuid
+        self.path = 'run_'+uuid.uuid4().hex
         if not os.path.isdir(self.path):
             os.mkdir(self.path)
+
+        self.path_relaxed = self.path + '/relaxed/'
+        if not os.path.isdir(self.path_relaxed):
+            os.mkdir(self.path_relaxed)
 
         # Relax the initial candidates
         while self.database_connection.get_number_of_unrelaxed_candidates() > 0:
@@ -112,7 +116,7 @@ class GA:
             if not self.cellbounds.is_within_bounds(cell):
                 self.database_connection.kill_candidate(a.info['confid'])
             else:
-                relaxed_a.write(self.path+str(a.info['confid'])+'.cif', 'cif')
+                relaxed_a.write(self.path_relaxed+str(a.info['confid'])+'.cif', 'cif')
 
     def evolve(self, num_offsprings=20):
         self.population = Population(data_connection=self.database_connection,
@@ -151,7 +155,7 @@ class GA:
             if not self.cellbounds.is_within_bounds(cell):
                 self.database_connection.kill_candidate(a3.info['confid'])
             else:
-                a3.write(self.path+str(a3.info['confid'])+'.cif', 'cif')
+                a3.write(self.path_relaxed+str(a3.info['confid'])+'.cif', 'cif')
 
             # Update the population
             self.population.update()
