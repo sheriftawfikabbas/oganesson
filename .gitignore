@@ -158,3 +158,4 @@ neb_path_*/
 ./*.traj
 ./*.json
 ./*.vasp
+./*.txt
