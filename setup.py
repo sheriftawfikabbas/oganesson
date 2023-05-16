@@ -23,8 +23,12 @@ setup(
     url='https://github.com/oganesson-ai/oganesson',
     keywords=['ai', 'machine learning',
               'model testing'],
-    install_requires=['xgboost',
+    install_requires=['ase',
                       'pandas',
-                      'numpy'],
+                      'numpy',
+                      'm3gnet',
+                      'pymatgen'
+                      'm3gnet',
+                      'gpaw'],
 
 )

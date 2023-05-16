@@ -8,16 +8,10 @@ from ase.ga.offspring_creator import OperationSelector
 from ase.ga.standardmutations import StrainMutation
 from ase.ga.soft_mutation import SoftMutation
 from ase.ga.cutandsplicepairing import CutAndSplicePairing
-
 from ase import Atoms
 from ase.data import atomic_numbers
-from ase.ga.utilities import closest_distances_generator, CellBounds
 from ase.ga.startgenerator import StartGenerator
 from ase.ga.data import PrepareDB
-from ase.build import niggli_reduce
-from ase.calculators.singlepoint import SinglePointCalculator
-from ase.optimize import FIRE
-from ase.constraints import ExpCellFilter
 from ase.ga import set_raw_score
 from m3gnet.models import Relaxer
 from oganesson.ogstructure import OgStructure
