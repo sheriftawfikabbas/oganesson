@@ -22,7 +22,8 @@ from ase.ga import set_raw_score
 from m3gnet.models import Relaxer
 from oganesson.ogstructure import OgStructure
 import os
-        
+
+
 class GA:
     def finalize(self, atoms, energy):
         raw_score = -energy
@@ -37,29 +38,30 @@ class GA:
         self.finalize(atoms, energy=e)
         return OgStructure.pymatgen_to_ase(relax_results['final_structure'])
 
-    def __init__(self,blocks,population_size=20,box_volume=240) -> None:
-        pass
+    def __init__(self, blocks, population_size=20, box_volume=240,
+                 a: list = [3, 10], b: list = [3, 10], c: list = [3, 10],
+                 phi: list = [35, 145], chi: list = [35, 145], psi: list = [35, 145]) -> None:
         self.N = population_size
         self.volume = box_volume
         self.blocks = blocks
         self.Z = [atomic_numbers[x] for x in self.blocks]
 
         self.blmin = closest_distances_generator(atom_numbers=self.Z,
-                                            ratio_of_covalent_radii=0.6)
-        self.cellbounds = CellBounds(bounds={'phi': [35, 145], 'chi': [35, 145],
-                                        'psi': [35, 145], 'a': [3, 10],
-                                        'b': [3, 10], 'c': [3, 10]})
+                                                 ratio_of_covalent_radii=0.6)
+        self.cellbounds = CellBounds(bounds={'phi': phi, 'chi': chi,
+                                             'psi': psi, 'a': a,
+                                             'b': b, 'c': c})
 
         self.splits = {(2,): 1, (1,): 1}
         self.slab = Atoms('', pbc=True)
 
         self.sg = StartGenerator(self.slab, self.blocks, self.blmin, box_volume=self.volume,
-                            number_of_variable_cell_vectors=3,
-                            cellbounds=self.cellbounds, splits=self.splits)
+                                 number_of_variable_cell_vectors=3,
+                                 cellbounds=self.cellbounds, splits=self.splits)
 
         # Create the database
         self.database = PrepareDB(db_file_name='gadb.db',
-                    stoichiometry=self.Z)
+                                  stoichiometry=self.Z)
 
         # Generate N random structures
         # and add them to the database
@@ -74,21 +76,23 @@ class GA:
         self.n_top = len(atom_numbers_to_optimize)
 
         self.comp = OFPComparator(n_top=self.n_top, dE=1.0,
-                            cos_dist_max=1e-3, rcut=10., binwidth=0.05,
-                            pbc=[True, True, True], sigma=0.05, nsigma=4,
-                            recalculate=False)
+                                  cos_dist_max=1e-3, rcut=10., binwidth=0.05,
+                                  pbc=[True, True, True], sigma=0.05, nsigma=4,
+                                  recalculate=False)
 
         self.pairing = CutAndSplicePairing(self.slab, self.n_top, self.blmin, p1=1., p2=0., minfrac=0.15,
-                                    number_of_variable_cell_vectors=3,
-                                    cellbounds=self.cellbounds, use_tags=False)
+                                           number_of_variable_cell_vectors=3,
+                                           cellbounds=self.cellbounds, use_tags=False)
 
         self.strainmut = StrainMutation(self.blmin, stddev=0.7, cellbounds=self.cellbounds,
-                                number_of_variable_cell_vectors=3,
-                                use_tags=False)
-        self.blmin_soft = closest_distances_generator(atom_numbers_to_optimize, 0.1)
-        self.softmut = SoftMutation(self.blmin_soft, bounds=[2., 5.], use_tags=False)
+                                        number_of_variable_cell_vectors=3,
+                                        use_tags=False)
+        self.blmin_soft = closest_distances_generator(
+            atom_numbers_to_optimize, 0.1)
+        self.softmut = SoftMutation(self.blmin_soft, bounds=[
+                                    2., 5.], use_tags=False)
         self.operators = OperationSelector([4., 3., 3.],
-                                    [self.pairing, self.softmut, self.strainmut])
+                                           [self.pairing, self.softmut, self.strainmut])
 
         self.path = 'relaxed/'
         if not os.path.isdir(self.path):
@@ -103,23 +107,23 @@ class GA:
             a.cell = relaxed_a.cell
             a.pbc = True
             self.database_connection.add_relaxed_step(a)
-            
+
             cell = a.get_cell()
             if not self.cellbounds.is_within_bounds(cell):
                 self.database_connection.kill_candidate(a.info['confid'])
             else:
-                relaxed_a.write(self.path+str(a.info['confid'])+'.cif','cif')
+                relaxed_a.write(self.path+str(a.info['confid'])+'.cif', 'cif')
 
     def evolve(self, num_offsprings=20):
         self.population = Population(data_connection=self.database_connection,
-                                population_size=self.N,
-                                comparator=self.comp,
-                                logfile='log.txt',
-                                use_extinct=True)
-
+                                     population_size=self.N,
+                                     comparator=self.comp,
+                                     logfile='log.txt',
+                                     use_extinct=True)
 
         current_pop = self.population.get_current_population()
-        self.strainmut.update_scaling_volume(current_pop, w_adapt=0.5, n_adapt=4)
+        self.strainmut.update_scaling_volume(
+            current_pop, w_adapt=0.5, n_adapt=4)
         self.pairing.update_scaling_volume(current_pop, w_adapt=0.5, n_adapt=4)
 
         for step in range(num_offsprings):
@@ -131,7 +135,8 @@ class GA:
                 a3, desc = self.operators.get_new_individual([a1, a2])
 
             # Save the unrelaxed candidate
-            self.database_connection.add_unrelaxed_candidate(a3, description=desc)
+            self.database_connection.add_unrelaxed_candidate(
+                a3, description=desc)
 
             # Relax the new candidate and save it
             relaxed_a = self.relax(a3, cellbounds=self.cellbounds)
@@ -146,16 +151,17 @@ class GA:
             if not self.cellbounds.is_within_bounds(cell):
                 self.database_connection.kill_candidate(a3.info['confid'])
             else:
-                a3.write(self.path+str(a3.info['confid'])+'.cif','cif')
-            
+                a3.write(self.path+str(a3.info['confid'])+'.cif', 'cif')
+
             # Update the population
             self.population.update()
 
             if step % 10 == 0:
                 current_pop = self.population.get_current_population()
                 self.strainmut.update_scaling_volume(current_pop, w_adapt=0.5,
-                                                n_adapt=4)
-                self.pairing.update_scaling_volume(current_pop, w_adapt=0.5, n_adapt=4)
+                                                     n_adapt=4)
+                self.pairing.update_scaling_volume(
+                    current_pop, w_adapt=0.5, n_adapt=4)
                 write('current_population.traj', current_pop)
 
         print('GA finished after step %d' % step)
