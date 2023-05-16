@@ -58,7 +58,6 @@ class GA:
                             cellbounds=self.cellbounds, splits=self.splits)
 
         # Create the database
-
         self.database = PrepareDB(db_file_name='gadb.db',
                     stoichiometry=self.Z)
 
@@ -68,7 +67,6 @@ class GA:
             a = self.sg.get_new_candidate()
             self.database.add_unrelaxed_candidate(a)
 
-        
         # Connect to the database and retrieve some information
         self.database_connection = DataConnection('gadb.db')
         self.slab = self.database_connection.get_slab()
@@ -113,7 +111,6 @@ class GA:
                 relaxed_a.write(self.path+str(a.info['confid'])+'.cif','cif')
 
     def evolve(self, num_offsprings=20):
-        # Initialize the population
         self.population = Population(data_connection=self.database_connection,
                                 population_size=self.N,
                                 comparator=self.comp,
