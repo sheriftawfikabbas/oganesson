@@ -5,15 +5,29 @@ from oganesson.descriptors import SymmetryFunctions
 from oganesson.ogstructure import OgStructure
 from oganesson.genetic_algorithms import GA
 
-__all__ = ("OgAI",
+__all__ = ["OgAI",
            "BACD",
            "SymmetryFunctions",
            "OgStructure",
-           "GA")
+           "GA"]
 
 try:
     imp.find_module('gpaw')
     from oganesson.descriptors import ROSA
-    __all__ += tuple("ROSA")
+    __all__ += ["ROSA"]
 except ImportError:
-    print('GPAW is not installed, and therefore you cannot use the ROSA descriptors.')
+    pass
+
+
+try:
+    imp.find_module('dscribe')
+    from oganesson.descriptors import DScribeACSF, DScribeSOAP, DScribeCoulombMatrix, DScribeEwaldSumMatrix, DScribeSineMatrix
+    __all__ += ["DScribeACSF",
+                "DScribeSOAP",
+                "DScribeCoulombMatrix",
+                "DScribeEwaldSumMatrix",
+                "DScribeSineMatrix"]
+except ImportError:
+    pass
+
+__all__ = tuple(__all__)

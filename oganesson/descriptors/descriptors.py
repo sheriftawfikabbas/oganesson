@@ -1,4 +1,3 @@
-from enum import Enum
 from ase import Atoms
 from pymatgen.core import Structure
 from abc import ABC, abstractmethod

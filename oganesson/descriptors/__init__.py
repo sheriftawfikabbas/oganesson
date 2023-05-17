@@ -18,6 +18,17 @@ try:
 except ImportError:
     print('GPAW is not installed, and therefore you cannot use the ROSA descriptors.')
 
+try:
+    imp.find_module('dscribe')
+    from oganesson.descriptors.dscribe import _DScribeACSF, _DScribeSOAP,_DScribeCoulombMatrix,_DScribeEwaldSumMatrix,_DScribeSineMatrix
+    DscribeACSF = _DScribeACSF
+    DScribeSOAP = _DScribeSOAP
+    DScribeCoulombMatrix=_DScribeCoulombMatrix
+    DScribeEwaldSumMatrix=_DScribeEwaldSumMatrix
+    DScribeSineMatrix=_DScribeSineMatrix
+except ImportError:
+    print('DScribe is not installed, and therefore you cannot use the DScribe descriptors.')
+
 
 class DescriptorsName(Enum):
     BACD = 0
