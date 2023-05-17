@@ -1,5 +1,11 @@
 ## Changelog
 
+
+### 0.1.4 - 2023-05-18
+
+* Added DScribe descriptors
+* Avoid importing gpaw/dscribe if they were not installed properly
+
 ### 0.1.3 - 2023-05-17
 
 * Fixing setup.py
