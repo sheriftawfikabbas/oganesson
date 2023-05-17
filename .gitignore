@@ -159,3 +159,6 @@ neb_path_*/
 ./*.json
 ./*.vasp
 ./*.txt
+
+./*.db
+./run_*/

@@ -5,11 +5,12 @@ from pymatgen.io.cif import CifParser
 from urllib.request import urlopen
 import pandas as pd
 import numpy as np
-from oganesson.descriptors import Descriptors
+from oganesson.descriptors.descriptors import Descriptors
 from oganesson.ogstructure import OgStructure
+from typing import Union
 
-class BACD(Descriptors):
-    def __init__(self, structure: Atoms | Structure | str | OgStructure) -> None:
+class _BACD(Descriptors):
+    def __init__(self, structure: Union[Atoms, Structure, str, OgStructure]) -> None:
         super().__init__(structure)
 
     def describe(self):

@@ -7,6 +7,7 @@ from oganesson.utilities import epsilon
 from ase.neb import NEB
 import os
 from ase.io import read
+from typing import Union
 
 
 class OgStructure:
@@ -15,7 +16,7 @@ class OgStructure:
     Unifies the type of the structure to be that of pymatgen.
     '''
 
-    def __init__(self, structure: Atoms | Structure | str = None, file_name: str = None) -> None:
+    def __init__(self, structure: Union[Atoms, Structure, str] = None, file_name: str = None) -> None:
         if structure is not None:
             if isinstance(structure, str):
                 parser = CifParser.from_string(structure)

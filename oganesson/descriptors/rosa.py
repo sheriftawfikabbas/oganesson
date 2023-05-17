@@ -1,27 +1,17 @@
 from ase import Atoms
-import os
-import string
-import random
 from pymatgen.core import Structure
-from pymatgen.io.cif import CifParser
-from urllib.request import urlopen
 import pandas as pd
 import matplotlib.pyplot as plt
 import pandas as pd
-import numpy as np
-from ase.build import bulk, niggli_reduce
+from ase.build import niggli_reduce
 from gpaw import GPAW
-from ase.io import read
-import pandas as pd
-
 import glob
-
-from oganesson.descriptors import Descriptors
+from oganesson.descriptors.descriptors import Descriptors
 from oganesson.ogstructure import OgStructure
+from typing import Union
 
-
-class ROSA(Descriptors):
-    def __init__(self, structure: Atoms | Structure | str | OgStructure, psfolder: str, descriptor_size=100, calculation_type='bulk') -> None:
+class _ROSA(Descriptors):
+    def __init__(self, structure: Union[Atoms, Structure, str, OgStructure], psfolder: str, descriptor_size=100, calculation_type='bulk') -> None:
         super().__init__(structure)
         self.psfolder = psfolder
         self.descriptor_size = descriptor_size

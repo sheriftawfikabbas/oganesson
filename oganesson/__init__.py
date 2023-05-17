@@ -1,13 +1,19 @@
+import imp
 from oganesson.ogai import OgAI
-from oganesson.descriptors.bacd import BACD 
-from oganesson.descriptors.rosa import ROSA
-from oganesson.descriptors.symmetry_functions import SymmetryFunctions
+from oganesson.descriptors import BACD
+from oganesson.descriptors import SymmetryFunctions
 from oganesson.ogstructure import OgStructure
 from oganesson.genetic_algorithms import GA
 
 __all__ = ("OgAI",
            "BACD",
-           "ROSA",
            "SymmetryFunctions",
            "OgStructure",
            "GA")
+
+try:
+    imp.find_module('gpaw')
+    from oganesson.descriptors import ROSA
+    __all__ += tuple("ROSA")
+except ImportError:
+    print('GPAW is not installed, and therefore you cannot use the ROSA descriptors.')

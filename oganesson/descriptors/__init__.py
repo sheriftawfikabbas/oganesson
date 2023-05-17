@@ -1,31 +1,23 @@
+import imp
 from enum import Enum
 from ase import Atoms
 from pymatgen.core import Structure
-from abc import ABC, abstractmethod
 from oganesson.ogstructure import OgStructure
+from oganesson.descriptors.descriptors import Descriptors
+from oganesson.descriptors.bacd import _BACD
+from oganesson.descriptors.symmetry_functions import _SymmetryFunctions
+from typing import Union
 
-class Descriptors(ABC):
-    def __init__(self, structure: Atoms | Structure | str | OgStructure) -> None:
-        if isinstance(structure, OgStructure):
-            self.structure = structure
-        else:
-            self.structure = OgStructure(structure)
+BACD = _BACD
+SymmetryFunctions = _SymmetryFunctions
 
-    @abstractmethod
-    def describe(self):
-        '''
-        '''
+try:
+    imp.find_module('gpaw')
+    from oganesson.descriptors.rosa import _ROSA
+    ROSA = _ROSA
+except ImportError:
+    print('GPAW is not installed, and therefore you cannot use the ROSA descriptors.')
 
-    def describe_batch(self,directory:str):
-        '''
-        Transform structures in the directory and load into the destination
-        '''
-    
-    def sensitivity_analysis(self):
-        '''
-        Perform standardized tests on the values of descriptors by perturbing the original structure
-        and reporting the resulting perturbation in descriptors.
-        '''
 
 class DescriptorsName(Enum):
     BACD = 0
@@ -34,8 +26,8 @@ class DescriptorsName(Enum):
 
 
 class Describe:
-    def __init__(self, 
-                 structure: Atoms | Structure | str | OgStructure, 
-                 descriptor: DescriptorsName | Descriptors, 
+    def __init__(self,
+                 structure: Union[Atoms, Structure, str, OgStructure],
+                 descriptor: Union[DescriptorsName, Descriptors],
                  string_format: str = None) -> None:
         pass
