@@ -1,5 +1,10 @@
 ## Changelog
 
+### 0.1.2 - 2023-05-17
+
+* Fixing setup.py
+* GA: Enabling writing structure into a uuid-based folder
+
 ### 0.1.1 - 2023-05-16
 
 * Addition of the OgStructure class
