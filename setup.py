@@ -21,13 +21,12 @@ setup(
     author='Sherif Abdulkader Tawfik Abbas',
     author_email='sherif.tawfic@gmail.com',
     url='https://github.com/oganesson-ai/oganesson',
-    keywords=['ai', 'machine learning',
-              'model testing'],
+    keywords=['ai', 'machine learning'],
     install_requires=['ase',
                       'pandas',
                       'numpy',
                       'm3gnet',
-                      'pymatgen'
+                      'pymatgen',
                       'm3gnet',
                       'gpaw'],
 
