@@ -1,5 +1,9 @@
 ## Changelog
 
+### 0.1.3 - 2023-05-17
+
+* Fixing setup.py
+
 ### 0.1.2 - 2023-05-17
 
 * Fixing setup.py
