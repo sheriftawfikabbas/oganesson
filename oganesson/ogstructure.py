@@ -20,6 +20,8 @@ class OgStructure:
 
     def __init__(self, structure: Union[Atoms, Structure, str] = None, file_name: str = None) -> None:
         if structure is not None:
+            if isinstance(structure, OgStructure):
+                self = structure
             if isinstance(structure, str):
                 parser = CifParser.from_string(structure)
                 structure = parser.get_structures()

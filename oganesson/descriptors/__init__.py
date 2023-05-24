@@ -20,12 +20,12 @@ except ImportError:
 
 try:
     imp.find_module('dscribe')
-    from oganesson.descriptors.dscribe import _DScribeACSF, _DScribeSOAP,_DScribeCoulombMatrix,_DScribeEwaldSumMatrix,_DScribeSineMatrix
+    from oganesson.descriptors.dscribe import _DScribeACSF, _DScribeSOAP, _DScribeCoulombMatrix, _DScribeEwaldSumMatrix, _DScribeSineMatrix
     DscribeACSF = _DScribeACSF
     DScribeSOAP = _DScribeSOAP
-    DScribeCoulombMatrix=_DScribeCoulombMatrix
-    DScribeEwaldSumMatrix=_DScribeEwaldSumMatrix
-    DScribeSineMatrix=_DScribeSineMatrix
+    DScribeCoulombMatrix = _DScribeCoulombMatrix
+    DScribeEwaldSumMatrix = _DScribeEwaldSumMatrix
+    DScribeSineMatrix = _DScribeSineMatrix
 except ImportError:
     print('DScribe is not installed, and therefore you cannot use the DScribe descriptors.')
 
@@ -34,11 +34,15 @@ class DescriptorsName(Enum):
     BACD = 0
     ROSA = 1
     SymmetryFunctions = 2
+    DscribeACSF = 3
 
 
 class Describe:
-    def __init__(self,
-                 structure: Union[Atoms, Structure, str, OgStructure],
-                 descriptor: Union[DescriptorsName, Descriptors],
+    @staticmethod
+    def describe(structure: Union[Atoms, Structure, str, OgStructure],
+                 descriptor: Descriptors,
                  string_format: str = None) -> None:
-        pass
+        # if not isinstance(descriptor, Descriptors):
+        #     raise Exception('The descriptor argument must be of type Descriptors.')
+        descriptor_object = descriptor(structure)
+        return descriptor_object.describe()
