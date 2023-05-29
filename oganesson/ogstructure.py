@@ -252,3 +252,5 @@ class OgStructure:
                             f = open(neb_folder+'/'+str(i).zfill(2), 'w')
                             f.write(image_str)
                             f.close()
+
+   
