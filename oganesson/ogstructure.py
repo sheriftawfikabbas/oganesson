@@ -191,6 +191,7 @@ class OgStructure:
         relaxer = Relaxer()
         relax_results = relaxer.relax(self.structure, verbose=True)
         self.structure = relax_results['final_structure']
+        self.total_energy = relax_results['trajectory'].energies[-1]
 
     def generate_neb(self, moving_atom_species, num_images=5, r=3, relaxation_method=None) -> None:
         structure = self.structure
@@ -253,6 +254,20 @@ class OgStructure:
                             f.write(image_str)
                             f.close()
     
+    def substitutions(self, atom_X, atom_X_substitution, atol=0.001):
+        from bsym.interface.pymatgen import unique_structure_substitutions
+        new_structures = unique_structure_substitutions(
+            self.structure, atom_X,atom_X_substitution, atol=atol)
+        if 'X' not in atom_X_substitution.keys():
+            return new_structures
+        else:
+            updated_structures = []
+            for s in new_structures:
+                s.remove_species(['X'])
+                updated_structures += [s]
+            return updated_structures
+
+
     def simulate(self, steps=10000, temperature=300, ensemble='nvt', timestep=1,loginterval=1000):
         from m3gnet.models import MolecularDynamics
         self.trajectory_file = str(temperature)+".traj"
