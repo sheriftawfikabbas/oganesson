@@ -28,6 +28,7 @@ setup(
                       'm3gnet',
                       'pymatgen',
                       'm3gnet',
-                      'gpaw'],
+                    #   'gpaw',
+                      'diffusivity'],
 
 )

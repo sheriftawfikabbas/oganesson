@@ -252,5 +252,24 @@ class OgStructure:
                             f = open(neb_folder+'/'+str(i).zfill(2), 'w')
                             f.write(image_str)
                             f.close()
+    
+    def simulate(self, steps=10000, temperature=300, ensemble='nvt', timestep=1,loginterval=1000):
+        from m3gnet.models import MolecularDynamics
+        self.trajectory_file = str(temperature)+".traj"
+        self.log_file = str(temperature)+".log"
+        md = MolecularDynamics(atoms=self.to_ase(),
+                               temperature=temperature, 
+                               timestep=timestep, 
+                               ensemble=ensemble, 
+                               trajectory=self.trajectory_file,
+                               logfile=self.log_file,
+                               loginterval=loginterval)
+        md.run(steps=steps)
+
+    def calculate_diffusivity(self):
+        import diffusivity
+        if self.trajectory_file:
+            '''
+            '''
 
    
