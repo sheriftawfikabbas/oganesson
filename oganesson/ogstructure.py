@@ -270,6 +270,7 @@ class OgStructure:
 
     def simulate(self, steps=10000, temperature=300, ensemble='nvt', timestep=1,loginterval=1000):
         from m3gnet.models import MolecularDynamics
+        self.dt = timestep
         self.trajectory_file = str(temperature)+".traj"
         self.log_file = str(temperature)+".log"
         md = MolecularDynamics(atoms=self.to_ase(),
@@ -281,10 +282,42 @@ class OgStructure:
                                loginterval=loginterval)
         md.run(steps=steps)
 
-    def calculate_diffusivity(self):
-        import diffusivity
+    def calculate_diffusivity(self, calculation_type='tracer', axis='all', ignore_n_images=0):
         if self.trajectory_file:
-            '''
-            '''
+            from diffusivity.diffusion_coefficients import DiffusionCoefficient
+            from ase.md.md import Trajectory     
+            diffusion_coefficients = DiffusionCoefficient(
+                Trajectory(self.trajectory_file), self.dt*1e-15, calculation_type=calculation_type, axis=axis)
+            diffusion_coefficients.calculate(ignore_n_images=ignore_n_images)
+            self.diffusion_coefficients = diffusion_coefficients.get_diffusion_coefficients()
+
+            # Plotting the MSD curve for each species in the structure
+            import matplotlib.pyplot as plt
+            plt.figure(figsize=(15, 10))
+            MSDs = []
+            plots = []
+            n = len(diffusion_coefficients.timesteps)
+            print('Plotting MSD using', n, 'images')
+
+            for sym_index in range(diffusion_coefficients.no_of_types_of_atoms):
+                MSD = np.zeros(len(diffusion_coefficients.timesteps[1:]))
+                for xyz in range(3):
+                    MSD += diffusion_coefficients.xyz_segment_ensemble_average[0][sym_index][xyz]
+                MSD /= 3
+                MSDs += [MSD]
+                label = diffusion_coefficients.types_of_atoms[sym_index]
+                # Add scatter graph  for the mean square displacement data in this segment
+                l, = plt.plot(diffusion_coefficients.timesteps[1:], MSD,
+                            label=label, linewidth=1)
+                plots += [l]
+            plt.legend(handles=plots)
+            plt.ylabel('MSD')
+            plt.savefig('MSD_'+calculation_type+'_'+axis, bbox_inches='tight')
+            plt.clf()
+
+            return self.diffusion_coefficients
+        else:
+            print('You have to run a simulation first!')
+
 
    
