@@ -42,7 +42,7 @@ The main purpose of `og` is to make complex artificial intelligence workflows ea
 
 ```python
 from oganesson.genetic_algorithms import GA
-ga = GA(['Na']*4 + ['H']*4)
+ga = GA(species=['Na']*4 + ['H']*4)
 for i in range(10):
     ga.evolve()
 ```

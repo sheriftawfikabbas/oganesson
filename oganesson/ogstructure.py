@@ -99,6 +99,9 @@ class OgStructure:
         self.structure = self.ase_to_pymatgen(sys)
         return self
 
+    def sort_species(self):
+        return OgStructure(self.structure.get_sorted_structure())
+
     def equivalent_sites(self, i, site):
         if epsilon(self.structure.frac_coords[i][0] % 1, site.frac_coords[0] % 1) \
                 and epsilon(self.structure.frac_coords[i][1] % 1, site.frac_coords[1] % 1) \
@@ -258,13 +261,13 @@ class OgStructure:
         new_structures = unique_structure_substitutions(
             self.structure, atom_X, atom_X_substitution, atol=atol)
         if 'X' not in atom_X_substitution.keys():
-            return new_structures
+            return [OgStructure(s) for s in new_structures]
         else:
             updated_structures = []
             for s in new_structures:
                 s.remove_species(['X'])
                 updated_structures += [s]
-            return updated_structures
+            return  [OgStructure(s) for s in updated_structures]
 
     def simulate(self, thermostat='anderson', steps=10000, temperature=300, ensemble='nvt', timestep=1, loginterval=1000, folder_tag=None):
         from oganesson.molecular_dynamics import MolecularDynamics
