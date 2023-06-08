@@ -162,5 +162,5 @@ neb_path_*/
 
 ./*.db
 ./run_*/
-jolt_lab/
-og_lab/
+jolt_lab
+og_lab
