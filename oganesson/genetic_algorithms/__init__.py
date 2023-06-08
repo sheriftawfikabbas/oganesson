@@ -114,12 +114,12 @@ class GA:
             self.volume = max(volume_values)*1.1
             self.blmin = closest_distances_generator(atom_numbers=self.Z,
                                                     ratio_of_covalent_radii=0.6)
-            self.cellbounds = CellBounds(bounds={'alpha': [min(alpha_values)*0.9,max(alpha_values)*1.1], 
-                                                 'beta': [min(beta_values)*0.9,max(beta_values)*1.1],
-                                                'gamma': [min(gamma_values)*0.9,max(gamma_values)*1.1], 
-                                                'a':  [min(a_values)*0.9,max(a_values)*1.1],
-                                                'b':  [min(b_values)*0.9,max(b_values)*1.1], 
-                                                'c':  [min(c_values)*0.9,max(c_values)*1.1]})
+            self.cellbounds = CellBounds(bounds={'alpha': [min(alpha_values)*0.7,max(alpha_values)*1.3], 
+                                                 'beta': [min(beta_values)*0.7,max(beta_values)*1.3],
+                                                'gamma': [min(gamma_values)*0.7,max(gamma_values)*1.3], 
+                                                'a':  [min(a_values)*0.7,max(a_values)*1.3],
+                                                'b':  [min(b_values)*0.7,max(b_values)*1.3], 
+                                                'c':  [min(c_values)*0.7,max(c_values)*1.3]})
 
             self.splits = {(2,): 1, (1,): 1}
             self.database = PrepareDB(db_file_name=self.path+'/ga.db',

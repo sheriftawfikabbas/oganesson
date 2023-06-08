@@ -269,6 +269,19 @@ class OgStructure:
                 updated_structures += [s]
             return  [OgStructure(s) for s in updated_structures]
 
+    def substitutions_random(self, atom_X, atom_X_substitution):
+        atom_X_s = []
+        for k in atom_X_substitution.keys():
+            atom_X_s+=atom_X_substitution[k]*[k]
+
+        import random
+        from pymatgen.core import Element
+        random.shuffle(atom_X_s)
+        for iatom in range(len(self.structure)):
+            if self.structure[iatom].specie.symbol == atom_X:
+                self.structure.replace(iatom,Element(atom_X_s.pop()))
+        return self
+
     def simulate(self, thermostat='anderson', steps=10000, temperature=300, ensemble='nvt', timestep=1, loginterval=1000, folder_tag=None):
         from oganesson.molecular_dynamics import MolecularDynamics
         import uuid
