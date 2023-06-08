@@ -1,6 +1,11 @@
 ## Changelog
 
 
+### 0.1.5 - 2023-06-08
+
+* Added MD to OgStructure
+* Added more examples
+
 ### 0.1.4 - 2023-05-18
 
 * Added DScribe descriptors
