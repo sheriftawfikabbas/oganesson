@@ -11,7 +11,6 @@ from typing import Union
 from oganesson.utilities.bonds_dictionary import bonds_dictionary
 from m3gnet.models import Relaxer
 
-
 class OgStructure:
     '''
     The generic structure object in og.
@@ -253,11 +252,11 @@ class OgStructure:
                             f = open(neb_folder+'/'+str(i).zfill(2), 'w')
                             f.write(image_str)
                             f.close()
-    
+
     def substitutions(self, atom_X, atom_X_substitution, atol=0.001):
         from bsym.interface.pymatgen import unique_structure_substitutions
         new_structures = unique_structure_substitutions(
-            self.structure, atom_X,atom_X_substitution, atol=atol)
+            self.structure, atom_X, atom_X_substitution, atol=atol)
         if 'X' not in atom_X_substitution.keys():
             return new_structures
         else:
@@ -267,16 +266,26 @@ class OgStructure:
                 updated_structures += [s]
             return updated_structures
 
-
-    def simulate(self, steps=10000, temperature=300, ensemble='nvt', timestep=1,loginterval=1000):
-        from m3gnet.models import MolecularDynamics
+    def simulate(self, thermostat='anderson', steps=10000, temperature=300, ensemble='nvt', timestep=1, loginterval=1000, folder_tag=None):
+        from oganesson.molecular_dynamics import MolecularDynamics
+        import uuid
         self.dt = timestep
-        self.trajectory_file = str(temperature)+".traj"
-        self.log_file = str(temperature)+".log"
+        if not os.path.isdir('og_lab'):
+            os.mkdir('og_lab')
+        if folder_tag is None:
+            self.folder_tag = str(uuid.uuid4())
+
+        self.folder_tag = 'simulation_' + self.folder_tag
+        os.mkdir('og_lab/'+self.folder_tag)
+
+        self.trajectory_file = 'og_lab/' + \
+            self.folder_tag+'/'+str(temperature)+".traj"
+        self.log_file = 'og_lab/'+self.folder_tag+'/'+str(temperature)+".log"
         md = MolecularDynamics(atoms=self.to_ase(),
-                               temperature=temperature, 
-                               timestep=timestep, 
-                               ensemble=ensemble, 
+                               thermostat=thermostat,
+                               temperature=temperature,
+                               timestep=timestep,
+                               ensemble=ensemble,
                                trajectory=self.trajectory_file,
                                logfile=self.log_file,
                                loginterval=loginterval)
@@ -285,7 +294,7 @@ class OgStructure:
     def calculate_diffusivity(self, calculation_type='tracer', axis='all', ignore_n_images=0):
         if self.trajectory_file:
             from diffusivity.diffusion_coefficients import DiffusionCoefficient
-            from ase.md.md import Trajectory     
+            from ase.md.md import Trajectory
             diffusion_coefficients = DiffusionCoefficient(
                 Trajectory(self.trajectory_file), self.dt*1e-15, calculation_type=calculation_type, axis=axis)
             diffusion_coefficients.calculate(ignore_n_images=ignore_n_images)
@@ -308,16 +317,14 @@ class OgStructure:
                 label = diffusion_coefficients.types_of_atoms[sym_index]
                 # Add scatter graph  for the mean square displacement data in this segment
                 l, = plt.plot(diffusion_coefficients.timesteps[1:], MSD,
-                            label=label, linewidth=1)
+                              label=label, linewidth=1)
                 plots += [l]
             plt.legend(handles=plots)
             plt.ylabel('MSD')
-            plt.savefig('MSD_'+calculation_type+'_'+axis, bbox_inches='tight')
+            plt.savefig('og_lab/' +
+                        self.folder_tag+'/MSD_'+calculation_type+'_'+axis, bbox_inches='tight')
             plt.clf()
 
             return self.diffusion_coefficients
         else:
             print('You have to run a simulation first!')
-
-
-   
