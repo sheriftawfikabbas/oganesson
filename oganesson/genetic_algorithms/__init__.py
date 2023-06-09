@@ -27,7 +27,7 @@ class GA:
     def relax(self, atoms, cellbounds=None):
         relaxer = Relaxer()
         structure = OgStructure.ase_to_pymatgen(atoms)
-        relax_results = relaxer.relax(structure, verbose=True)
+        relax_results = relaxer.relax(structure, verbose=self.verbose, steps=self.steps)
 
         e = float(relax_results['trajectory'].energies[-1])
         self.finalize(atoms, energy=e)
@@ -35,17 +35,26 @@ class GA:
 
     def __init__(self, population: List[OgStructure]=None, species=None, population_size=20, box_volume=240,
                  a: List = [3, 10], b: List = [3, 10], c: List = [3, 10],
-                 phi: List = [35, 145], chi: List = [35, 145], psi: List = [35, 145]) -> None:
+                 phi: List = [35, 145], chi: List = [35, 145], psi: List = [35, 145],
+                 verbose=False, steps=1000, experiment_tag=None) -> None:
         # Either establish a new population from scratch by randomly filling boxes,
         # or start from a specified population of structures
         self.path = 'og_lab/'
-        if not os.path.isdir(self.path):
-            os.mkdir(self.path)
-        import uuid
-        self.path = 'og_lab/ga_'+uuid.uuid4().hex
-        if not os.path.isdir(self.path):
-            os.mkdir(self.path)
+        self.verbose = verbose
+        self.steps = steps
+        self.experiment_tag = experiment_tag
 
+        if not os.path.isdir(self.path):
+            os.mkdir(self.path)
+        if experiment_tag is None:
+            import uuid
+            self.path = 'og_lab/ga_'+uuid.uuid4().hex
+        else:
+            self.path = 'og_lab/ga_'+self.experiment_tag
+        
+        if not os.path.isdir(self.path):
+            os.mkdir(self.path)
+            
         self.path_relaxed = self.path + '/relaxed/'
         if not os.path.isdir(self.path_relaxed):
             os.mkdir(self.path_relaxed)
@@ -111,15 +120,15 @@ class GA:
                 gamma_values += [p.structure.lattice.gamma]
                 volume_values += [p.structure.volume]
             
-            self.volume = max(volume_values)*1.1
+            self.volume = max(volume_values)*1.5
             self.blmin = closest_distances_generator(atom_numbers=self.Z,
                                                     ratio_of_covalent_radii=0.6)
-            self.cellbounds = CellBounds(bounds={'alpha': [min(alpha_values)*0.7,max(alpha_values)*1.3], 
-                                                 'beta': [min(beta_values)*0.7,max(beta_values)*1.3],
-                                                'gamma': [min(gamma_values)*0.7,max(gamma_values)*1.3], 
-                                                'a':  [min(a_values)*0.7,max(a_values)*1.3],
-                                                'b':  [min(b_values)*0.7,max(b_values)*1.3], 
-                                                'c':  [min(c_values)*0.7,max(c_values)*1.3]})
+            self.cellbounds = CellBounds(bounds={'alpha': [min(alpha_values)*0.5,max(alpha_values)*1.5], 
+                                                 'beta': [min(beta_values)*0.5,max(beta_values)*1.5],
+                                                'gamma': [min(gamma_values)*0.5,max(gamma_values)*1.5], 
+                                                'a':  [min(a_values)*0.5,max(a_values)*1.5],
+                                                'b':  [min(b_values)*0.5,max(b_values)*1.5], 
+                                                'c':  [min(c_values)*0.5,max(c_values)*1.5]})
 
             self.splits = {(2,): 1, (1,): 1}
             self.database = PrepareDB(db_file_name=self.path+'/ga.db',
@@ -223,7 +232,7 @@ class GA:
 
         print('GA finished after step %d' % step)
         hiscore = get_raw_score(current_pop[0])
-        print('Highest raw score = %8.4f eV' % hiscore)
+        print('Highest raw score = -%8.4f eV' % hiscore)
 
         all_candidates = self.database_connection.get_all_relaxed_candidates()
         write(self.path+'/all_candidates.traj', all_candidates)

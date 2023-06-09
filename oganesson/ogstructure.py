@@ -17,7 +17,8 @@ class OgStructure:
     Unifies the type of the structure to be that of pymatgen.
     '''
 
-    def __init__(self, structure: Union[Atoms, Structure, str] = None, file_name: str = None) -> None:
+    def __init__(self, structure: Union[Atoms, Structure, str] = None, file_name: str = None, structure_tag=None) -> None:
+        self.structure_tag = structure_tag
         if structure is not None:
             if isinstance(structure, OgStructure):
                 self = structure
@@ -344,3 +345,22 @@ class OgStructure:
             return self.diffusion_coefficients
         else:
             print('You have to run a simulation first!')
+
+    def xrd(self, two_theta_range=(0,180)):
+        if self.structure_tag is None:
+            tag = self.structure.formula
+        else:
+            tag = self.structure_tag
+        from pymatgen.analysis.diffraction.xrd import XRDCalculator
+        xrd_calculator = XRDCalculator()
+        p = xrd_calculator.get_pattern(self.structure, two_theta_range=two_theta_range)
+        import matplotlib.pyplot as plt
+        plt.figure(figsize=(15, 10))
+        print('Plotting the XRD pattern')
+        plt.plot(p.x,p.y, linewidth=1)
+        plt.xlabel(r'$2\Theta$')
+        plt.xticks(range(two_theta_range[0],two_theta_range[1]+10,10))
+        plt.ylabel(r'Intensity')
+        plt.savefig('og_lab/XRD_' + tag, bbox_inches='tight')
+        plt.clf()
+        return p
