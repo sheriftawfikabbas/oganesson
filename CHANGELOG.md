@@ -4,6 +4,7 @@
 
 * GA population can be provided by user
 * Added random atom substitution to OgStructure
+* Added XRD to OgStructure via pymatgen's API
 
 ### 0.1.5 - 2023-06-08
 
