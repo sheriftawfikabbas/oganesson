@@ -2,7 +2,7 @@ from oganesson.ogstructure import OgStructure
 from pymatgen.core import Structure
 import numpy as np
 
-def outcar_to_ogstructures(outcar_directory="."):
+def outcar_extractor(outcar_directory:str=".",outcar_file:str='OUTCAR'):
     def get_indices(l, s):
         indices = []
         for i in range(len(l)):
@@ -37,7 +37,7 @@ def outcar_to_ogstructures(outcar_directory="."):
                 ions = s
         return ion_counts, ions
 
-    outcarf = open(outcar_directory+'/OUTCAR', 'r')
+    outcarf = open(outcar_directory+outcar_file, 'r')
     outcar = outcarf.readlines()
     outcarf.close()
 
