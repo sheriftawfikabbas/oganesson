@@ -1,6 +1,6 @@
 ## Changelog
 
-### 0.1.6 - 2023-06-08
+### 0.1.6 - 2023-06-13
 
 * GA population can be provided by user
 * Added random atom substitution to OgStructure

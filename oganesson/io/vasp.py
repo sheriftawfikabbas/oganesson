@@ -1,9 +1,8 @@
-from oganesson.ogstructure import OgStructure
 from pymatgen.core import Structure
 import numpy as np
 
 class Outcar:
-    def __init__(self, outcar_directory:str=".", outcar_file:str='OUTCAR') -> None:
+    def __init__(self, outcar_directory:str="./", outcar_file:str='OUTCAR') -> None:
         self.outcar_directory = outcar_directory
         self.outcar_file = outcar_file
 
