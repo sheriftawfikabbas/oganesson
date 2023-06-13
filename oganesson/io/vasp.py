@@ -1,6 +1,6 @@
 from oganesson.ogstructure import OgStructure
 from pymatgen.core import Structure
-
+import numpy as np
 
 def outcar_to_ogstructures(outcar_directory="."):
     def get_indices(l, s):
