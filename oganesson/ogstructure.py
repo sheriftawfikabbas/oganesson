@@ -17,7 +17,8 @@ class OgStructure:
     Unifies the type of the structure to be that of pymatgen.
     '''
 
-    def __init__(self, structure: Union[Atoms, Structure, str] = None, file_name: str = None) -> None:
+    def __init__(self, structure: Union[Atoms, Structure, str] = None, file_name: str = None, structure_tag=None) -> None:
+        self.structure_tag = structure_tag
         if structure is not None:
             if isinstance(structure, OgStructure):
                 self = structure
@@ -98,6 +99,9 @@ class OgStructure:
         sys.center(about=about_point)
         self.structure = self.ase_to_pymatgen(sys)
         return self
+
+    def sort_species(self):
+        return OgStructure(self.structure.get_sorted_structure())
 
     def equivalent_sites(self, i, site):
         if epsilon(self.structure.frac_coords[i][0] % 1, site.frac_coords[0] % 1) \
@@ -258,13 +262,26 @@ class OgStructure:
         new_structures = unique_structure_substitutions(
             self.structure, atom_X, atom_X_substitution, atol=atol)
         if 'X' not in atom_X_substitution.keys():
-            return new_structures
+            return [OgStructure(s) for s in new_structures]
         else:
             updated_structures = []
             for s in new_structures:
                 s.remove_species(['X'])
                 updated_structures += [s]
-            return updated_structures
+            return  [OgStructure(s) for s in updated_structures]
+
+    def substitutions_random(self, atom_X, atom_X_substitution):
+        atom_X_s = []
+        for k in atom_X_substitution.keys():
+            atom_X_s+=atom_X_substitution[k]*[k]
+
+        import random
+        from pymatgen.core import Element
+        random.shuffle(atom_X_s)
+        for iatom in range(len(self.structure)):
+            if self.structure[iatom].specie.symbol == atom_X:
+                self.structure.replace(iatom,Element(atom_X_s.pop()))
+        return self
 
     def simulate(self, thermostat='anderson', steps=10000, temperature=300, ensemble='nvt', timestep=1, loginterval=1000, folder_tag=None):
         from oganesson.molecular_dynamics import MolecularDynamics
@@ -328,3 +345,22 @@ class OgStructure:
             return self.diffusion_coefficients
         else:
             print('You have to run a simulation first!')
+
+    def xrd(self, two_theta_range=(0,180)):
+        if self.structure_tag is None:
+            tag = self.structure.formula
+        else:
+            tag = self.structure_tag
+        from pymatgen.analysis.diffraction.xrd import XRDCalculator
+        xrd_calculator = XRDCalculator()
+        p = xrd_calculator.get_pattern(self.structure, two_theta_range=two_theta_range)
+        import matplotlib.pyplot as plt
+        plt.figure(figsize=(15, 10))
+        print('Plotting the XRD pattern')
+        plt.plot(p.x,p.y, linewidth=1)
+        plt.xlabel(r'$2\Theta$')
+        plt.xticks(range(two_theta_range[0],two_theta_range[1]+10,10))
+        plt.ylabel(r'Intensity')
+        plt.savefig('og_lab/XRD_' + tag, bbox_inches='tight')
+        plt.clf()
+        return p
