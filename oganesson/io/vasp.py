@@ -10,10 +10,12 @@ class Outcar:
     def get_md_data(self):
         return self._outcar_extractor()
     
-    def write_md_data(self, file_name:str = None, path:str='.'):
+    def write_md_data(self, file_name:str = None, path:str=None):
         structures, forces_vectors, stress_matrices = self._outcar_extractor()
         if file_name is None:
             file_name = self.outcar_file+'.json'
+        if path is None:
+            path = self.outcar_directory
         output = {'structures':structures,'forces':forces_vectors, 'stresses':stress_matrices}
         import json
         with open(path+file_name,'w') as f:
@@ -81,7 +83,7 @@ class Outcar:
         stress_matrices = get_vectors(
             outcar, stresses_positions, 1, 3, 3)
         for i in range(len(positions_vectors)):
-            structures += [OgStructure(Structure(species=atoms,
-                                                coords=positions_vectors[i], lattice=lattice_vectors[i]))]
+            structures += [Structure(species=atoms,
+                                                coords=positions_vectors[i], lattice=lattice_vectors[i]).as_dict()]
 
-        return structures, forces_vectors, stress_matrices
+        return structures, forces_vectors.tolist(), stress_matrices
