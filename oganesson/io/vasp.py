@@ -2,9 +2,10 @@ from pymatgen.core import Structure
 import numpy as np
 
 class Outcar:
-    def __init__(self, outcar_directory:str="./", outcar_file:str='OUTCAR') -> None:
+    def __init__(self, outcar_directory:str="./", outcar_file:str='OUTCAR', poscar_file:str=None) -> None:
         self.outcar_directory = outcar_directory
         self.outcar_file = outcar_file
+        self.poscar_file = poscar_file
 
     def get_md_data(self):
         return self._outcar_extractor()
@@ -60,12 +61,18 @@ class Outcar:
         outcarf.close()
 
         structures = []
-        ion_counts, ions = get_atoms_counts(outcar)
         atoms = []
-        for i in range(len(ions)):
-            atoms += ion_counts[i]*[ions[i]]
+        if self.poscar_file is not None:
+            structure = Structure.from_file(self.outcar_directory+self.poscar_file)
+            number_of_atoms = len(structure)
+            atoms = [s.specie.symbol for s in structure]
+        else:
+            ion_counts, ions = get_atoms_counts(outcar)
+        
+            for i in range(len(ions)):
+                atoms += ion_counts[i]*[ions[i]]
 
-        number_of_atoms = sum(ion_counts)
+            number_of_atoms = sum(ion_counts)
 
         direct_lattice_vectors_positions = get_indices(
             outcar, 'direct lattice vectors')
