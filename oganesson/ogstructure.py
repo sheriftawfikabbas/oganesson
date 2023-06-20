@@ -132,10 +132,6 @@ class OgStructure:
         elif self.distance(atom_coords, n) > max_bond:
             return -(atom_coords-n)/np.linalg.norm(atom_coords-n)/100
 
-    @staticmethod
-    def is_image(a, b):
-        return a.is_periodic_image(b)
-
     def add_atom_to_surface(self, atom_symbol, max_trials=1000):
         s = self.to_ase()
         path = './'
