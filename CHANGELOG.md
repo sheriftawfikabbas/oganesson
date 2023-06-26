@@ -1,5 +1,11 @@
 ## Changelog
 
+
+### 0.1.7 - 2023-06-13
+
+* Creating the GA object won't relax the initial population. The first call for evolve() will do
+* Initial GA structures can be written to CIF files
+
 ### 0.1.6 - 2023-06-13
 
 * GA population can be provided by user

@@ -36,13 +36,14 @@ class GA:
     def __init__(self, population: List[OgStructure]=None, species=None, population_size=20, box_volume=240,
                  a: List = [3, 10], b: List = [3, 10], c: List = [3, 10],
                  phi: List = [35, 145], chi: List = [35, 145], psi: List = [35, 145],
-                 verbose=False, steps=1000, experiment_tag=None) -> None:
+                 verbose=False, steps=1000, experiment_tag=None, write_initial_structures=False) -> None:
         # Either establish a new population from scratch by randomly filling boxes,
         # or start from a specified population of structures
         self.path = 'og_lab/'
         self.verbose = verbose
         self.steps = steps
         self.experiment_tag = experiment_tag
+        self.write_initial_structures = write_initial_structures
 
         if not os.path.isdir(self.path):
             os.mkdir(self.path)
@@ -88,6 +89,12 @@ class GA:
             for i in range(self.N):
                 a = self.sg.get_new_candidate()
                 self.database.add_unrelaxed_candidate(a)
+                if self.write_initial_structures:
+                    self.path_initial = self.path + '/initial/'
+                    if not os.path.isdir(self.path_initial):
+                        os.mkdir(self.path_initial)
+
+                    write(self.path_initial+'/'+str(a.info['confid'])+'.cif',a)
 
             # Connect to the database and retrieve some information
             self.database_connection = DataConnection(self.path+'/ga.db')
@@ -135,6 +142,12 @@ class GA:
                                     stoichiometry=self.Z)
             for i in range(self.N):
                 self.database.add_unrelaxed_candidate(population[i].to_ase())
+                if self.write_initial_structures:
+                    self.path_initial = self.path + '/initial/'
+                    if not os.path.isdir(self.path_initial):
+                        os.mkdir(self.path_initial)
+
+                    write(self.path_initial+'/'+str(a.info['confid'])+'.cif',a)
             
             self.database_connection = DataConnection(self.path+'/ga.db')
             self.slab = self.database_connection.get_slab()
@@ -163,79 +176,95 @@ class GA:
                                     2., 5.], use_tags=False)
         self.operators = OperationSelector([4., 3., 3.],
                                            [self.pairing, self.softmut, self.strainmut])
-        
+        self.relaxed_population = False
         # Relax the initial candidates
-        while self.database_connection.get_number_of_unrelaxed_candidates() > 0:
-            a = self.database_connection.get_an_unrelaxed_candidate()
-
-            relaxed_a = self.relax(a, cellbounds=self.cellbounds)
-            a.positions = relaxed_a.positions
-            a.cell = relaxed_a.cell
-            a.pbc = True
-            self.database_connection.add_relaxed_step(a)
-
-            cell = a.get_cell()
-            if not self.cellbounds.is_within_bounds(cell):
-                self.database_connection.kill_candidate(a.info['confid'])
-            else:
-                relaxed_a.write(self.path_relaxed+str(a.info['confid'])+'.cif', 'cif')
-
+    
     def evolve(self, num_offsprings=20):
-        self.population = Population(data_connection=self.database_connection,
-                                     population_size=self.N,
-                                     comparator=self.comp,
-                                     logfile=self.path+'/log.txt',
-                                     use_extinct=True)
+        if not self.relaxed_population:
+            while self.database_connection.get_number_of_unrelaxed_candidates() > 0:
+                a = self.database_connection.get_an_unrelaxed_candidate()
+                if self.write_initial_structures:
+                    self.path_initial = self.path + '/initial/'
+                    if not os.path.isdir(self.path_initial):
+                        os.mkdir(self.path_initial)
 
-        current_pop = self.population.get_current_population()
-        self.strainmut.update_scaling_volume(
-            current_pop, w_adapt=0.5, n_adapt=4)
-        self.pairing.update_scaling_volume(current_pop, w_adapt=0.5, n_adapt=4)
+                    write(self.path_initial+'/'+str(a.info['confid'])+'.cif',a)
 
-        for step in range(num_offsprings):
-            print('Now starting configuration number {0}'.format(step))
+                relaxed_a = self.relax(a, cellbounds=self.cellbounds)
+                a.positions = relaxed_a.positions
+                a.cell = relaxed_a.cell
+                a.pbc = True
+                self.database_connection.add_relaxed_step(a)
 
-            a3 = None
-            while a3 is None:
-                a1, a2 = self.population.get_two_candidates()
-                a3, desc = self.operators.get_new_individual([a1, a2])
+                cell = a.get_cell()
+                if not self.cellbounds.is_within_bounds(cell):
+                    self.database_connection.kill_candidate(a.info['confid'])
+                else:
+                    relaxed_a.write(self.path_relaxed+str(a.info['confid'])+'.cif', 'cif')
+            self.relaxed_population = True
+        else:
+            self.population = Population(data_connection=self.database_connection,
+                                        population_size=self.N,
+                                        comparator=self.comp,
+                                        logfile=self.path+'/log.txt',
+                                        use_extinct=True)
 
-            # Save the unrelaxed candidate
-            self.database_connection.add_unrelaxed_candidate(
-                a3, description=desc)
+            current_pop = self.population.get_current_population()
+            self.strainmut.update_scaling_volume(
+                current_pop, w_adapt=0.5, n_adapt=4)
+            self.pairing.update_scaling_volume(current_pop, w_adapt=0.5, n_adapt=4)
 
-            # Relax the new candidate and save it
-            relaxed_a = self.relax(a3, cellbounds=self.cellbounds)
-            a3.positions = relaxed_a.positions
-            a3.cell = relaxed_a.cell
-            a3.pbc = True
-            self.database_connection.add_relaxed_step(a3)
+            for step in range(num_offsprings):
+                print('Now starting configuration number {0}'.format(step))
 
-            # If the relaxation has changed the cell parameters
-            # beyond the bounds we disregard it in the population
-            cell = a3.get_cell()
-            if not self.cellbounds.is_within_bounds(cell):
-                self.database_connection.kill_candidate(a3.info['confid'])
-            else:
-                a3.write(self.path_relaxed+str(a3.info['confid'])+'.cif', 'cif')
+                a3 = None
+                while a3 is None:
+                    a1, a2 = self.population.get_two_candidates()
+                    a3, desc = self.operators.get_new_individual([a1, a2])
 
-            # Update the population
-            self.population.update()
+                # Save the unrelaxed candidate
+                self.database_connection.add_unrelaxed_candidate(
+                    a3, description=desc)
+                
+                if self.write_initial_structures:
+                    self.path_initial = self.path + '/initial/'
+                    if not os.path.isdir(self.path_initial):
+                        os.mkdir(self.path_initial)
 
-            if step % 10 == 0:
-                current_pop = self.population.get_current_population()
-                self.strainmut.update_scaling_volume(current_pop, w_adapt=0.5,
-                                                     n_adapt=4)
-                self.pairing.update_scaling_volume(
-                    current_pop, w_adapt=0.5, n_adapt=4)
-                write(self.path+'/current_population.traj', current_pop)
+                    write(self.path_initial+'/'+str(a3.info['confid'])+'.cif',a3)
 
-        print('GA finished after step %d' % step)
-        hiscore = get_raw_score(current_pop[0])
-        print('Highest raw score = -%8.4f eV' % hiscore)
+                # Relax the new candidate and save it
+                relaxed_a = self.relax(a3, cellbounds=self.cellbounds)
+                a3.positions = relaxed_a.positions
+                a3.cell = relaxed_a.cell
+                a3.pbc = True
+                self.database_connection.add_relaxed_step(a3)
 
-        all_candidates = self.database_connection.get_all_relaxed_candidates()
-        write(self.path+'/all_candidates.traj', all_candidates)
+                # If the relaxation has changed the cell parameters
+                # beyond the bounds we disregard it in the population
+                cell = a3.get_cell()
+                if not self.cellbounds.is_within_bounds(cell):
+                    self.database_connection.kill_candidate(a3.info['confid'])
+                else:
+                    a3.write(self.path_relaxed+str(a3.info['confid'])+'.cif', 'cif')
 
-        current_pop = self.population.get_current_population()
-        write(self.path+'/current_population.traj', current_pop)
+                # Update the population
+                self.population.update()
+
+                if step % 10 == 0:
+                    current_pop = self.population.get_current_population()
+                    self.strainmut.update_scaling_volume(current_pop, w_adapt=0.5,
+                                                        n_adapt=4)
+                    self.pairing.update_scaling_volume(
+                        current_pop, w_adapt=0.5, n_adapt=4)
+                    write(self.path+'/current_population.traj', current_pop)
+
+            print('GA finished after step %d' % step)
+            hiscore = get_raw_score(current_pop[0])
+            print('Highest raw score = -%8.4f eV' % hiscore)
+
+            all_candidates = self.database_connection.get_all_relaxed_candidates()
+            write(self.path+'/all_candidates.traj', all_candidates)
+
+            current_pop = self.population.get_current_population()
+            write(self.path+'/current_population.traj', current_pop)
