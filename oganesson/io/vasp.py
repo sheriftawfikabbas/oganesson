@@ -90,6 +90,6 @@ class Outcar:
             outcar, stresses_positions, 1, 3, 3)
         for i in range(len(positions_vectors)):
             structures += [Structure(species=atoms,
-                                                coords=positions_vectors[i], lattice=lattice_vectors[i]).as_dict()]
+                                                coords=positions_vectors[i], lattice=lattice_vectors[i], coords_are_cartesian=True).as_dict()]
 
         return structures, forces_vectors.tolist(), stress_matrices
