@@ -8,6 +8,7 @@ from ase.ga.offspring_creator import OperationSelector
 from ase.ga.standardmutations import StrainMutation
 from ase.ga.soft_mutation import SoftMutation
 from ase.ga.cutandsplicepairing import CutAndSplicePairing
+from ase.ga.particle_mutations import Poor2richPermutation, Rich2poorPermutation
 from ase import Atoms
 from ase.data import atomic_numbers
 from ase.ga.startgenerator import StartGenerator
@@ -158,10 +159,14 @@ class GA:
             raise Exception('Wrong input arguments!')
 
         print('Population size:', self.N)
+
+
         self.comp = OFPComparator(n_top=self.n_top, dE=1.0,
                                   cos_dist_max=1e-3, rcut=10., binwidth=0.05,
                                   pbc=[True, True, True], sigma=0.05, nsigma=4,
                                   recalculate=False)
+        
+
 
         self.pairing = CutAndSplicePairing(self.slab, self.n_top, self.blmin, p1=1., p2=0., minfrac=0.15,
                                            number_of_variable_cell_vectors=3,
@@ -174,8 +179,11 @@ class GA:
             atom_numbers_to_optimize, 0.1)
         self.softmut = SoftMutation(self.blmin_soft, bounds=[
                                     2., 5.], use_tags=False)
-        self.operators = OperationSelector([4., 3., 3.],
-                                           [self.pairing, self.softmut, self.strainmut])
+        self.poor2rich = Poor2richPermutation(self.species)
+        self.rich2poor = Rich2poorPermutation(self.species)
+
+        self.operators = OperationSelector([2.5, 2.5 , 2., 1.5, 1.5],
+                                           [self.poor2rich, self.rich2poor, self.pairing, self.softmut, self.strainmut])
         self.relaxed_population = False
         # Relax the initial candidates
     
@@ -213,7 +221,7 @@ class GA:
             self.strainmut.update_scaling_volume(
                 current_pop, w_adapt=0.5, n_adapt=4)
             self.pairing.update_scaling_volume(current_pop, w_adapt=0.5, n_adapt=4)
-
+            
             for step in range(num_offsprings):
                 print('Now starting configuration number {0}'.format(step))
 
