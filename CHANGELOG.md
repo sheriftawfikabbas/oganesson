@@ -1,6 +1,11 @@
 ## Changelog
 
 
+### 0.1.8 - 2023-07-07
+
+* Added new GA operators
+* Critical fix for vasp.py
+
 ### 0.1.7 - 2023-06-13
 
 * Creating the GA object won't relax the initial population. The first call for evolve() will do
