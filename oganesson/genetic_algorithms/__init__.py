@@ -61,7 +61,7 @@ class GA:
         if not os.path.isdir(self.path_relaxed):
             os.mkdir(self.path_relaxed)
 
-        print('Starting structural optimization using genetic algorithms..')
+        print('og:Starting structural optimization using genetic algorithms..')
         if population is None:
             self.N = population_size
             self.volume = box_volume
@@ -156,9 +156,9 @@ class GA:
             self.n_top = len(atom_numbers_to_optimize)
         
         else:
-            raise Exception('Wrong input arguments!')
+            raise Exception('og:Wrong input arguments!')
 
-        print('Population size:', self.N)
+        print('og:Population size:', self.N)
 
 
         self.comp = OFPComparator(n_top=self.n_top, dE=1.0,
@@ -179,11 +179,19 @@ class GA:
             atom_numbers_to_optimize, 0.1)
         self.softmut = SoftMutation(self.blmin_soft, bounds=[
                                     2., 5.], use_tags=False)
-        self.poor2rich = Poor2richPermutation(self.species)
-        self.rich2poor = Rich2poorPermutation(self.species)
-
-        self.operators = OperationSelector([2.5, 2.5 , 2., 1.5, 1.5],
-                                           [self.poor2rich, self.rich2poor, self.pairing, self.softmut, self.strainmut])
+        import numpy as np
+        cell = self.slab.get_cell()
+        vol = self.slab.cell.volume
+        axb = np.cross(cell[(i + 1) % 3, :], cell[(i + 2) % 3, :])
+        h = vol / np.linalg.norm(axb)
+        if h >= 20:
+            print('og:Including the Rich2poorPermutation in the list of GA operators')
+            self.rich2poor = Rich2poorPermutation(self.species)
+            self.operators = OperationSelector([3, 2, 1.5, 1.5],
+                                            [self.rich2poor, self.pairing, self.softmut, self.strainmut])
+        else:
+            self.operators = OperationSelector([4, 3, 3],
+                                            [self.pairing, self.softmut, self.strainmut])
         self.relaxed_population = False
         # Relax the initial candidates
     
@@ -223,7 +231,7 @@ class GA:
             self.pairing.update_scaling_volume(current_pop, w_adapt=0.5, n_adapt=4)
             
             for step in range(num_offsprings):
-                print('Now starting configuration number {0}'.format(step))
+                print('og:Now starting configuration number {0}'.format(step))
 
                 a3 = None
                 while a3 is None:
@@ -267,9 +275,9 @@ class GA:
                         current_pop, w_adapt=0.5, n_adapt=4)
                     write(self.path+'/current_population.traj', current_pop)
 
-            print('GA finished after step %d' % step)
+            print('og:GA finished after step %d' % step)
             hiscore = get_raw_score(current_pop[0])
-            print('Highest raw score = -%8.4f eV' % hiscore)
+            print('og:Highest raw score = -%8.4f eV' % hiscore)
 
             all_candidates = self.database_connection.get_all_relaxed_candidates()
             write(self.path+'/all_candidates.traj', all_candidates)

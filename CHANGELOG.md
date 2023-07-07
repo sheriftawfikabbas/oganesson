@@ -5,6 +5,7 @@
 
 * Added new GA operators
 * Critical fix for vasp.py
+* Several fixes
 
 ### 0.1.7 - 2023-06-13
 
