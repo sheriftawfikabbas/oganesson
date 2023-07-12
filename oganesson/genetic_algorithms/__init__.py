@@ -8,7 +8,7 @@ from ase.ga.offspring_creator import OperationSelector
 from ase.ga.standardmutations import StrainMutation
 from ase.ga.soft_mutation import SoftMutation
 from ase.ga.cutandsplicepairing import CutAndSplicePairing
-from ase.ga.particle_mutations import Poor2richPermutation, Rich2poorPermutation
+from oganesson.genetic_algorithms.particle_mutations import Poor2richPermutation, Rich2poorPermutation
 from ase import Atoms
 from ase.data import atomic_numbers
 from ase.ga.startgenerator import StartGenerator
@@ -37,7 +37,7 @@ class GA:
     def __init__(self, population: List[OgStructure]=None, species=None, population_size=20, box_volume=240,
                  a: List = [3, 10], b: List = [3, 10], c: List = [3, 10],
                  phi: List = [35, 145], chi: List = [35, 145], psi: List = [35, 145],
-                 verbose=False, steps=1000, experiment_tag=None, write_initial_structures=False) -> None:
+                 verbose=False, steps=1000, experiment_tag=None, write_initial_structures=False, rmax=10) -> None:
         # Either establish a new population from scratch by randomly filling boxes,
         # or start from a specified population of structures
         self.path = 'og_lab/'
@@ -45,7 +45,7 @@ class GA:
         self.steps = steps
         self.experiment_tag = experiment_tag
         self.write_initial_structures = write_initial_structures
-
+        self.rmax = rmax
         if not os.path.isdir(self.path):
             os.mkdir(self.path)
         if experiment_tag is None:
@@ -60,6 +60,8 @@ class GA:
         self.path_relaxed = self.path + '/relaxed/'
         if not os.path.isdir(self.path_relaxed):
             os.mkdir(self.path_relaxed)
+
+        h_max = 0
 
         print('og:Starting structural optimization using genetic algorithms..')
         if population is None:
@@ -96,6 +98,14 @@ class GA:
                         os.mkdir(self.path_initial)
 
                     write(self.path_initial+'/'+str(a.info['confid'])+'.cif',a)
+                
+                cell = a
+                vol = self.slab.cell.volume
+                axb = np.cross(cell[(i + 1) % 3, :], cell[(i + 2) % 3, :])
+                h = vol / np.linalg.norm(axb)
+                if h > h_max:
+                    h_max = h 
+        
 
             # Connect to the database and retrieve some information
             self.database_connection = DataConnection(self.path+'/ga.db')
@@ -137,12 +147,12 @@ class GA:
                                                 'a':  [min(a_values)*0.5,max(a_values)*1.5],
                                                 'b':  [min(b_values)*0.5,max(b_values)*1.5], 
                                                 'c':  [min(c_values)*0.5,max(c_values)*1.5]})
-
             self.splits = {(2,): 1, (1,): 1}
             self.database = PrepareDB(db_file_name=self.path+'/ga.db',
                                     stoichiometry=self.Z)
             for i in range(self.N):
-                self.database.add_unrelaxed_candidate(population[i].to_ase())
+                a = population[i].to_ase()
+                self.database.add_unrelaxed_candidate(a)
                 if self.write_initial_structures:
                     self.path_initial = self.path + '/initial/'
                     if not os.path.isdir(self.path_initial):
@@ -150,6 +160,13 @@ class GA:
 
                     write(self.path_initial+'/'+str(a.info['confid'])+'.cif',a)
             
+                cell = a
+                vol = self.slab.cell.volume
+                axb = np.cross(cell[(i + 1) % 3, :], cell[(i + 2) % 3, :])
+                h = vol / np.linalg.norm(axb)
+                if h > h_max:
+                    h_max = h 
+
             self.database_connection = DataConnection(self.path+'/ga.db')
             self.slab = self.database_connection.get_slab()
             atom_numbers_to_optimize = self.database_connection.get_atom_numbers_to_optimize()
@@ -178,15 +195,12 @@ class GA:
         self.blmin_soft = closest_distances_generator(
             atom_numbers_to_optimize, 0.1)
         self.softmut = SoftMutation(self.blmin_soft, bounds=[
-                                    2., 5.], use_tags=False)
+                                    2., 5.], use_tags=False, used_modes_file=self.path+'/')
         import numpy as np
-        cell = self.slab.get_cell()
-        vol = self.slab.cell.volume
-        axb = np.cross(cell[(i + 1) % 3, :], cell[(i + 2) % 3, :])
-        h = vol / np.linalg.norm(axb)
-        if h >= 20:
+        print('og:rmax threshold:',h)
+        if h_max >= self.rmax:
             print('og:Including the Rich2poorPermutation in the list of GA operators')
-            self.rich2poor = Rich2poorPermutation(self.species)
+            self.rich2poor = Rich2poorPermutation(self.species, rmax=rmax)
             self.operators = OperationSelector([3, 2, 1.5, 1.5],
                                             [self.rich2poor, self.pairing, self.softmut, self.strainmut])
         else:
