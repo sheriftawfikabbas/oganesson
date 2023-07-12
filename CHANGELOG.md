@@ -1,6 +1,11 @@
 ## Changelog
 
 
+
+### 0.1.20 - 2023-07-12
+
+* Hot fix: included get_rdf within OgStructure because it is missing in the most recent version of ASE. Also would benefit from some optimization.
+
 ### 0.1.9 - 2023-07-12
 
 * Over-ridden the particle mutation of ASE

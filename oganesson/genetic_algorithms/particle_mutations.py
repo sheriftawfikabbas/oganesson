@@ -1,10 +1,9 @@
 import numpy as np
 from operator import itemgetter
-
+from oganesson.ogstructure import OgStructure
 from ase.ga.offspring_creator import OffspringCreator
 from ase.ga.utilities import get_distance_matrix
 from ase.ga.particle_mutations import Mutation
-from ase.geometry.rdf import get_rdf
 from ase import Atoms
 
 def get_nndist(atoms, distance_matrix, rmax):
@@ -15,7 +14,8 @@ def get_nndist(atoms, distance_matrix, rmax):
     function.
     """
     nbins = 200
-    rdf, dists = get_rdf(atoms, rmax, nbins, distance_matrix)
+    og = OgStructure(atoms)
+    rdf, dists = og.get_rdf(rmax, nbins, distance_matrix)
     return dists[np.argmax(rdf)]
 
 class _NeighborhoodPermutation(Mutation):
