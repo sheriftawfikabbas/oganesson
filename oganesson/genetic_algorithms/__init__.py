@@ -18,7 +18,7 @@ from m3gnet.models import Relaxer
 from oganesson.ogstructure import OgStructure
 import os
 from typing import List
-
+import numpy as np
 
 class GA:
     def finalize(self, atoms, energy):
@@ -99,8 +99,8 @@ class GA:
 
                     write(self.path_initial+'/'+str(a.info['confid'])+'.cif',a)
                 
-                cell = a
-                vol = self.slab.cell.volume
+                cell = a.cell
+                vol = a.cell.volume
                 axb = np.cross(cell[(i + 1) % 3, :], cell[(i + 2) % 3, :])
                 h = vol / np.linalg.norm(axb)
                 if h > h_max:
@@ -160,8 +160,8 @@ class GA:
 
                     write(self.path_initial+'/'+str(a.info['confid'])+'.cif',a)
             
-                cell = a
-                vol = self.slab.cell.volume
+                cell = a.cell
+                vol = a.cell.volume
                 axb = np.cross(cell[(i + 1) % 3, :], cell[(i + 2) % 3, :])
                 h = vol / np.linalg.norm(axb)
                 if h > h_max:
@@ -195,8 +195,7 @@ class GA:
         self.blmin_soft = closest_distances_generator(
             atom_numbers_to_optimize, 0.1)
         self.softmut = SoftMutation(self.blmin_soft, bounds=[
-                                    2., 5.], use_tags=False, used_modes_file=self.path+'/')
-        import numpy as np
+                                    2., 5.], use_tags=False, used_modes_file=self.path+'/soft_mutations_modes.json')
         print('og:rmax threshold:',h)
         if h_max >= self.rmax:
             print('og:Including the Rich2poorPermutation in the list of GA operators')
