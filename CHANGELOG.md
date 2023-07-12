@@ -1,6 +1,11 @@
 ## Changelog
 
 
+### 0.1.9 - 2023-07-12
+
+* Over-ridden the particle mutation of ASE
+* Few fixes
+
 ### 0.1.8 - 2023-07-07
 
 * Added new GA operators
