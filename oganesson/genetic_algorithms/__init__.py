@@ -19,6 +19,7 @@ from oganesson.ogstructure import OgStructure
 import os
 from typing import List
 import numpy as np
+import json
 
 class GA:
     def finalize(self, atoms, energy):
@@ -32,7 +33,7 @@ class GA:
 
         e = float(relax_results['trajectory'].energies[-1])
         self.finalize(atoms, energy=e)
-        return OgStructure.pymatgen_to_ase(relax_results['final_structure'])
+        return OgStructure.pymatgen_to_ase(relax_results['final_structure']), e
 
     def __init__(self, population: List[OgStructure]=None, species=None, population_size=20, box_volume=240,
                  a: List = [3, 10], b: List = [3, 10], c: List = [3, 10],
@@ -61,6 +62,10 @@ class GA:
         if not os.path.isdir(self.path_relaxed):
             os.mkdir(self.path_relaxed)
 
+        self.fitness_each_iteration = {}
+
+        self._create_or_read_fitness_file()
+        
         h_max = 0
 
         print('og:Starting structural optimization using genetic algorithms..')
@@ -208,7 +213,24 @@ class GA:
         self.relaxed_population = False
         # Relax the initial candidates
     
+    def _create_or_read_fitness_file(self):
+        if not os.path.isfile(self.path + '/fitness_each_iteration.json'):
+            f=open(self.path + '/fitness_each_iteration.json','w')
+            json.dump(self.fitness_each_iteration, f)
+            f.close()
+        else:
+            f=open(self.path + '/fitness_each_iteration.json','r')
+            self.fitness_each_iteration = json.load(f)
+            f.close()
+
+    def _update_fitness_file(self):
+        f=open(self.path + '/fitness_each_iteration.json','w')
+        json.dump(self.fitness_each_iteration, f)
+        f.close()
+
     def evolve(self, num_offsprings=20):
+        energies_for_step = []
+
         if not self.relaxed_population:
             while self.database_connection.get_number_of_unrelaxed_candidates() > 0:
                 a = self.database_connection.get_an_unrelaxed_candidate()
@@ -219,7 +241,8 @@ class GA:
 
                     write(self.path_initial+'/'+str(a.info['confid'])+'.cif',a)
 
-                relaxed_a = self.relax(a, cellbounds=self.cellbounds)
+                relaxed_a, e = self.relax(a, cellbounds=self.cellbounds)
+                energies_for_step += [e]
                 a.positions = relaxed_a.positions
                 a.cell = relaxed_a.cell
                 a.pbc = True
@@ -244,6 +267,7 @@ class GA:
             self.pairing.update_scaling_volume(current_pop, w_adapt=0.5, n_adapt=4)
             
             for step in range(num_offsprings):
+                
                 print('og:Now starting configuration number {0}'.format(step))
 
                 a3 = None
@@ -263,7 +287,8 @@ class GA:
                     write(self.path_initial+'/'+str(a3.info['confid'])+'.cif',a3)
 
                 # Relax the new candidate and save it
-                relaxed_a = self.relax(a3, cellbounds=self.cellbounds)
+                relaxed_a, e = self.relax(a3, cellbounds=self.cellbounds)
+                energies_for_step += [e]
                 a3.positions = relaxed_a.positions
                 a3.cell = relaxed_a.cell
                 a3.pbc = True
@@ -287,6 +312,18 @@ class GA:
                     self.pairing.update_scaling_volume(
                         current_pop, w_adapt=0.5, n_adapt=4)
                     write(self.path+'/current_population.traj', current_pop)
+
+            self._create_or_read_fitness_file()
+
+            iterations_labels = list(self.fitness_each_iteration.keys())
+            iterations_labels = [int(x) for x in iterations_labels]
+            if len(iterations_labels) > 0:
+                current_iteration_label = max(iterations_labels) + 1
+            else:
+                current_iteration_label = 1
+            
+            self.fitness_each_iteration[current_iteration_label] = min(energies_for_step)
+            self._update_fitness_file()
 
             print('og:GA finished after step %d' % step)
             hiscore = get_raw_score(current_pop[0])

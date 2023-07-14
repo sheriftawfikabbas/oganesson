@@ -188,9 +188,9 @@ class OgStructure:
             ii += 1
         return False
 
-    def relax(self, relaxation_method='m3gnet', cellbounds=None):
+    def relax(self, relaxation_method='m3gnet', cellbounds=None, steps=1000):
         relaxer = Relaxer()
-        relax_results = relaxer.relax(self.structure, verbose=True)
+        relax_results = relaxer.relax(self.structure, verbose=True, steps=steps)
         self.structure = relax_results['final_structure']
         self.total_energy = relax_results['trajectory'].energies[-1]
 

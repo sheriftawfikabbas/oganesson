@@ -1,6 +1,9 @@
 ## Changelog
 
 
+### 0.1.21 - 2023-07-14
+
+* Enabled more logging in GA
 
 ### 0.1.20 - 2023-07-12
 
