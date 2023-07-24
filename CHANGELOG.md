@@ -1,6 +1,12 @@
 ## Changelog
 
 
+### 0.1.22 - 2023-07-16
+
+* Addition of adsorption_scanner() method
+* Addition of transformed fragment descriptors
+* Addition of the structure rippling code
+
 ### 0.1.21 - 2023-07-14
 
 * Enabled more logging in GA

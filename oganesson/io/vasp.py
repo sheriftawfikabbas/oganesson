@@ -1,5 +1,27 @@
 from pymatgen.core import Structure
+from oganesson.ogstructure import OgStructure
+from pymatgen.io.vasp import Poscar as MPPoscar
 import numpy as np
+
+class Poscar:
+    def __init__(self, structure) -> None:
+        self.ogstructure = OgStructure(structure)
+    
+    def freeze_up_to(self,z):
+        """
+        Produce the POSCAR file after modifying it to constraint the layers of atoms below z Angstroms
+        """
+        constraints = np.ndarray(self.ogstructure().cart_coords.shape)
+        for i in range(len(self.ogstructure)):
+            atom = self.ogstructure().cart_coords[i]
+            if atom[2] < z:
+                constraints[i,:] = False
+            else:
+                constraints[i,:] = True
+        mpposcar = MPPoscar(self.ogstructure(),selective_dynamics=constraints)
+        return mpposcar.get_string()
+        
+        
 
 class Outcar:
     def __init__(self, outcar_directory:str="./", outcar_file:str='OUTCAR', poscar_file:str=None) -> None:

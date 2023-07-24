@@ -1,4 +1,4 @@
-from ase import Atoms
+from ase import Atoms, Atom
 from ase.cell import Cell
 from pymatgen.core import Structure
 import numpy as np
@@ -36,10 +36,17 @@ class OgStructure:
                 raise Exception('Structure type is not recognized.')
         elif file_name is not None:
             self.structure = self.ase_to_pymatgen(read(file_name))
-
+        
+        self.structure.sort()
     def __call__(self):
         return self.structure
 
+    def __len__(self) -> int:
+        """
+        Returns number of atoms in structure.
+        """
+        return len(self.structure)
+    
     @staticmethod
     def db_to_structure(row):
         return Structure(coords_are_cartesian=True, coords=row.positions, species=row.symbols, lattice=row.cell)
@@ -117,7 +124,7 @@ class OgStructure:
         for i_site in range(len(self.structure)):
             if self.equivalent_sites(i_site, neighbor):
                 return i_site
-        print('No equivalent:', neighbor)
+        print('og:No equivalent:', neighbor)
         return None
 
     def _get_min_max_bonds(self, atom_1_number, atom_2_number):
@@ -136,7 +143,6 @@ class OgStructure:
 
     def add_atom_to_surface(self, atom_symbol, max_trials=1000):
         s = self.to_ase()
-        path = './'
         s.positions[:, 2] = s.positions[:, 2] - s.positions[:, 2].min()
         nudge = np.array([0.0, 0.0, 0.0])
 
@@ -179,14 +185,84 @@ class OgStructure:
                 elif ii % 1000 == 0:
                     do_leap = True
                 elif ii == max_trials-1:
-                    intercalation.to('cif', path+'bad_'+str(id)+'.cif')
-                    print('bad', id)
-                    f = open(path+'bad_'+str(id)+'.history', 'w')
-                    f.write(history)
-                    f.close()
                     return False
             ii += 1
         return False
+    
+    def adsorption_scanner(self, atom_symbol, max_trials=1000):
+        def available_in_list(p,l):
+            for il in l:
+                if self.distance(il,p) < 0.5:
+                    return True
+            return False
+        
+        s = self.to_ase()
+        s_exhibit = self.to_ase()
+        partition = 0.5
+        number_of_partitions_a = int(s.cell.cellpar()[0]/partition)
+        number_of_partitions_b = int(s.cell.cellpar()[1]/partition)
+        adsorption_positions = []
+        adsorption_structures = []
+        for a in np.linspace(0,s.cell.cellpar()[0]-partition,number_of_partitions_a):
+            for b in np.linspace(0,s.cell.cellpar()[1]-partition,number_of_partitions_b):
+                structure = self._adsorption_scanner_position(atom_symbol, [a, b], max_trials)
+                if structure:
+                    new_position = structure().cart_coords[-1]
+                    if not available_in_list(new_position, adsorption_positions):
+                        adsorption_positions += [new_position]
+                        adsorption_structures += [structure]
+                        s_exhibit.append(Atom(symbol=atom_symbol,position=new_position))
+        adsorption_structures += [OgStructure(s_exhibit)]
+        return adsorption_structures
+
+    def _adsorption_scanner_position(self, atom_symbol, position, max_trials=1000):
+        s = self.to_ase()
+        s.positions[:, 2] = s.positions[:, 2] - s.positions[:, 2].min()
+        nudge = np.array([0.0, 0.0, 0.0])
+
+        ii = 0
+        history = ""
+        do_leap = False
+        while ii < max_trials:
+            s1 = s
+            s1_thickness = s1.positions[:, 2].max() - s1.positions[:, 2].min()
+            if do_leap:
+                atom = Atoms(positions=[[s.cell.cellpar()[0]*np.random.random(), s.cell.cellpar()[1]*np.random.random(), nudge[2]+s1_thickness+2.5/2]],
+                             pbc=True, cell=s.cell, symbols=[atom_symbol])
+
+            else:
+                atom = Atoms(positions=[[position[0] + nudge[0], position[1] + nudge[1], nudge[2]+s1_thickness+2.5/2]],
+                             symbols=[atom_symbol], pbc=True, cell=s.cell)
+
+            intercalation = s1 + atom
+
+            intercalation = self.ase_to_pymatgen(intercalation)
+
+            n = intercalation.get_neighbors(intercalation[-1], 3.5)
+            n_Li_distances = []
+            needs_nudging = False
+            if len(n) == 0:
+                nudge[2] += -0.01
+            else:
+                for n_Li in n:
+                    n_Li_distances += [self.distance(intercalation[-1].coords,
+                                                     n_Li.coords)]
+                    history += str([n_Li_distances])+'\n'
+                    min_bond, max_bond = self._get_min_max_bonds(
+                        intercalation[-1].specie.Z, n_Li.specie.Z)
+                    if self.distance(intercalation[-1].coords, n_Li.coords) < min_bond or self.distance(intercalation[-1].coords, n_Li.coords) > max_bond and not self.is_image(n_Li, intercalation[-1]):
+                        nudge += self._nudgeVector(
+                            intercalation[-1].coords, n_Li.coords, min_bond, max_bond)
+                        needs_nudging = True
+                if not needs_nudging:
+                    return OgStructure(intercalation)
+                elif ii % 1000 == 0:
+                    do_leap = True
+                elif ii == max_trials-1:
+                    return False
+            ii += 1
+        return False
+
 
     def relax(self, relaxation_method='m3gnet', cellbounds=None, steps=1000):
         relaxer = Relaxer()
@@ -205,14 +281,14 @@ class OgStructure:
                 for site in all_neighbors:
                     if site.specie.symbol == moving_atom_species:
                         neighbors += [site]
-                print('Checking site', i_site,
+                print('og:Checking site', i_site,
                       ': Surrounded by', len(neighbors))
                 for neighbor in neighbors:
                     i_neighbor_site = self._get_site_for_neighbor_site(
                         neighbor)
                     print(i_neighbor_site)
                     if i_neighbor_site is None:
-                        raise Exception('Really? Wrong site in neighbor list!')
+                        raise Exception('og:Really? Wrong site in neighbor list!')
                     if [i_site, i_neighbor_site] in self.neb_paths or [i_neighbor_site, i_site] in self.neb_paths:
                         continue
                     else:
@@ -321,7 +397,7 @@ class OgStructure:
             MSDs = []
             plots = []
             n = len(diffusion_coefficients.timesteps)
-            print('Plotting MSD using', n, 'images')
+            print('og:Plotting MSD using', n, 'images')
 
             for sym_index in range(diffusion_coefficients.no_of_types_of_atoms):
                 MSD = np.zeros(len(diffusion_coefficients.timesteps[1:]))
@@ -342,7 +418,7 @@ class OgStructure:
 
             return self.diffusion_coefficients
         else:
-            print('You have to run a simulation first!')
+            print('og:You have to run a simulation first!')
 
     def xrd(self, two_theta_range=(0,180)):
         if self.structure_tag is None:
@@ -354,7 +430,7 @@ class OgStructure:
         p = xrd_calculator.get_pattern(self.structure, two_theta_range=two_theta_range)
         import matplotlib.pyplot as plt
         plt.figure(figsize=(15, 10))
-        print('Plotting the XRD pattern')
+        print('og:Plotting the XRD pattern')
         plt.plot(p.x,p.y, linewidth=1)
         plt.xlabel(r'$2\Theta$')
         plt.xticks(range(two_theta_range[0],two_theta_range[1]+10,10))
@@ -489,3 +565,134 @@ class OgStructure:
             return rdf[1:]
 
         return rdf[1:], rr
+
+    def create_ripple(self, axis, length, amplitude):
+        x = self.structure.cart_coords[:,0]
+        y = self.structure.cart_coords[:,1]
+        z = self.structure.cart_coords[:,2]
+        if axis == 2:
+            for i in range(len(self.structure)):
+                z[i] = z[i] + amplitude * np.sin(y[i] * 2 * np.pi / length)
+            
+        elif axis == 1:
+            for i in range(len(self.structure)):
+                z[i] = z[i] + amplitude * np.sin(x[i] * 2 * np.pi / length)
+        new_coords = np.array([x,y,z]).T   
+        return OgStructure(Structure(lattice=self.structure.lattice,species=self.structure.species,coords=new_coords,coords_are_cartesian=True))
+    
+
+    def create_helix(self, length, amplitude):
+        x = self.structure.cart_coords[:,0]
+        y = self.structure.cart_coords[:,1]
+        z = self.structure.cart_coords[:,2]
+        
+        for i in range(len(self.structure)):
+            z[i] = z[i] + amplitude * np.cos(x[i] * 2 * np.pi / length)
+            y[i] = y[i] + amplitude * np.sin(x[i] * 2 * np.pi / length)
+        
+        new_coords = np.array([x,y,z]).T   
+        return OgStructure(Structure(lattice=self.structure.lattice,species=self.structure.species,coords=new_coords,coords_are_cartesian=True))
+    
+    '''
+    public XYZ rotationalAlignmentOnYAxis(int a, int b) {
+        int atomA = a - 1;
+        int atomB = b - 1;
+        double r12X = x[atomA] - x[atomB];
+        double r12Y = y[atomA] - y[atomB];
+        double r12Z = z[atomA] - z[atomB];
+        double thetaXY = Math.acos(r12X / Math.sqrt(r12X * r12X + r12Y * r12Y));
+        double thetaXZ = Math.atan(r12Z / Math.sqrt(r12X * r12X + r12Y * r12Y));
+
+        //Perform rotation 1: about z axis
+        for (int i = 0; i < N; i++) {
+            double oldx = x[i];
+            double oldy = y[i];
+            x[i] = oldx * Math.cos(thetaXY) - oldy * Math.sin(thetaXY);
+            y[i] = oldx * Math.sin(thetaXY) + oldy * Math.cos(thetaXY);
+        }
+
+        //Perform rotation 2: about y axis
+        for (int i = 0; i < N; i++) {
+            double oldx = x[i];
+            double oldz = z[i];
+            x[i] = oldx * Math.cos(thetaXZ) + oldz * Math.sin(thetaXZ);
+            z[i] = -oldx * Math.sin(thetaXZ) + oldz * Math.cos(thetaXZ);
+
+        }
+
+        double thetaYZ = -Math.atan(z[atomA] / y[atomA]);
+
+        //Perform rotation 3: about x axis
+        for (int i = 0; i < N; i++) {
+            double oldy = y[i];
+            double oldz = z[i];
+            y[i] = oldy * Math.cos(thetaYZ) - oldz * Math.sin(thetaYZ);
+            z[i] = oldy * Math.sin(thetaYZ) + oldz * Math.cos(thetaYZ);
+        }
+        return this;
+    }
+
+    public XYZ rotationalAlignmentOnZAxis(int a, int b) {
+        int atomA = a - 1;
+        int atomB = b - 1;
+        double r12X = Math.abs(x[atomA] - x[atomB]);
+        double r12Y = Math.abs(y[atomA] - y[atomB]);
+        double r12Z = Math.abs(z[atomA] - z[atomB]);
+        double thetaXY = Math.asin(-r12Y / Math.sqrt(r12X * r12X + r12Y * r12Y));
+        double thetaXZ = Math.PI / 2 - Math.atan(-r12Z / Math.sqrt(r12X * r12X + r12Y * r12Y));
+
+        //Perform rotation 1: about z axis
+        for (int i = 0; i < N; i++) {
+            double oldx = x[i];
+            double oldy = y[i];
+            x[i] = oldx * Math.cos(thetaXY) - oldy * Math.sin(thetaXY);
+            y[i] = oldx * Math.sin(thetaXY) + oldy * Math.cos(thetaXY);
+        }
+
+        //Perform rotation 2: about y axis
+        for (int i = 0; i < N; i++) {
+            double oldx = x[i];
+            double oldz = z[i];
+            x[i] = oldx * Math.cos(thetaXZ) + oldz * Math.sin(thetaXZ);
+            z[i] = -oldx * Math.sin(thetaXZ) + oldz * Math.cos(thetaXZ);
+
+        }
+        return this;
+    }
+
+    public XYZ rotationalAlignmentAlongZAxis(int a, int b) {
+        int atomA = a - 1;
+        int atomB = b - 1;
+        double r12X = (x[atomA] - x[atomB]);
+        double r12Y = (y[atomA] - y[atomB]);
+        double r12Z = (z[atomA] - z[atomB]);
+        double thetaXY = 0, thetaXZ = 0;
+        thetaXY = Math.acos(r12X / Math.sqrt(r12X * r12X + r12Y * r12Y));
+        thetaXZ = -Math.PI / 2 + Math.atan(r12Z / Math.sqrt(r12X * r12X + r12Y * r12Y));
+
+        //Perform rotation 1: about z axis
+        for (int i = 0; i < N; i++) {
+            double oldx = x[i];
+            double oldy = y[i];
+            x[i] = oldx * Math.cos(thetaXY) - oldy * Math.sin(thetaXY);
+            y[i] = oldx * Math.sin(thetaXY) + oldy * Math.cos(thetaXY);
+        }
+
+        //Perform rotation 2: about y axis
+        for (int i = 0; i < N; i++) {
+            double oldx = x[i];
+            double oldz = z[i];
+            x[i] = oldx * Math.cos(thetaXZ) + oldz * Math.sin(thetaXZ);
+            z[i] = -oldx * Math.sin(thetaXZ) + oldz * Math.cos(thetaXZ);
+
+        }
+        return this;
+    }
+    public int getNumValenceElectrons() throws InvalidElementException {
+        int valence = 0;
+        for (int i = 0; i < N; i++) {
+            valence += AtomicData.getValence(atom[i]);
+        }
+        return valence;
+    }
+    '''
