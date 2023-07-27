@@ -1,6 +1,10 @@
 ## Changelog
 
 
+### 0.1.24 - 2023-07-27
+
+* Hot fix for the delta vector function
+
 ### 0.1.23 - 2023-07-27
 
 * Addition of delta vector function

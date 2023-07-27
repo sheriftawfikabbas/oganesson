@@ -447,7 +447,7 @@ class OgStructure:
 
         structure = OgStructure(structure)
         lattice = self.structure.lattice
-        return [pbc_shortest_vectors(lattice,self.structure.frac_coords[i],structure().frac_coords[i]) for i in range(len(self))]
+        return np.vstack([pbc_shortest_vectors(lattice,self.structure.frac_coords[i],structure().frac_coords[i]) for i in range(len(self))]).reshape(len(self),3)
         
 
     def get_rdf(self, rmax: float, nbins: int,
