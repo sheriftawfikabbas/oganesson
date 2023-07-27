@@ -1,6 +1,10 @@
 ## Changelog
 
 
+### 0.1.23 - 2023-07-27
+
+* Addition of delta vector function
+
 ### 0.1.22 - 2023-07-16
 
 * Addition of adsorption_scanner() method

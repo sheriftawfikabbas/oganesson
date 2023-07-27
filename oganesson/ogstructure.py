@@ -439,6 +439,17 @@ class OgStructure:
         plt.clf()
         return p
 
+    def get_delta_vector(self, structure):
+        """
+        Gets the difference between the atomic positions of the current structure and `structure`.
+        """
+        from pymatgen.util.coord import pbc_shortest_vectors
+
+        structure = OgStructure(structure)
+        lattice = self.structure.lattice
+        return [pbc_shortest_vectors(lattice,self.structure.frac_coords[i],structure().frac_coords[i]) for i in range(len(self))]
+        
+
     def get_rdf(self, rmax: float, nbins: int,
                 distance_matrix: Optional[np.ndarray] = None,
                 elements: Optional[Union[List[int], Tuple]] = None,
