@@ -112,6 +112,34 @@ class OgStructure:
     def sort_species(self):
         return OgStructure(self.structure.get_sorted_structure())
 
+        
+    def get_bonds(self):
+        bond_data = {}
+        for c1 in self.structure:
+            c = self.structure.get_neighbors(site=c1, r=4)
+            for c2 in c:
+                Rij = self.distance(c1.coords, c2.coords)
+
+                if c1.specie.number < c2.specie.number:
+                    k = str(c1.specie.number)+'_'+str(c2.specie.number)
+                else:
+                    k = str(c2.specie.number)+'_'+str(c1.specie.number)
+
+                if k in bond_data.keys():
+                    available = False
+                    for bb in bond_data[k]:
+                        if abs(bb-Rij) < 1e-5:
+                            available = True
+                            break
+                    if not available:
+                        bond_data[k] += [Rij]
+                else:
+                    bond_data[k] = [Rij]
+        return bond_data
+
+    def translate(self, v):
+        self.structure.translate_sites(range(len(self)),v)
+
     def equivalent_sites(self, i, site):
         if epsilon(self.structure.frac_coords[i][0] % 1, site.frac_coords[0] % 1) \
                 and epsilon(self.structure.frac_coords[i][1] % 1, site.frac_coords[1] % 1) \
