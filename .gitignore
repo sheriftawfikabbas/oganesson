@@ -166,3 +166,5 @@ jolt_lab
 og_lab
 *.cif
 design/
+test.py
+triplets.py

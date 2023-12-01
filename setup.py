@@ -25,7 +25,6 @@ setup(
     install_requires=['ase',
                       'pandas',
                       'numpy',
-                      'm3gnet',
                       'pymatgen',
                       'm3gnet',
                     #   'gpaw',

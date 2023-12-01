@@ -1,5 +1,9 @@
 ## Changelog
 
+### 0.1.25 - 2023-11-30
+
+* Adding interstitial atoms to a structure
+* Several minor fixes
 
 ### 0.1.24 - 2023-07-27
 

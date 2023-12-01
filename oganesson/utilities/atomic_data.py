@@ -18,6 +18,8 @@ d_groups_no_REAs = [
     [21, 39]
 ]
 
+d_groups_flat = [item for col in d_groups for item in col]
+
 d_groups_no_REAs += [[x, x+18, x+50] for x in range(22, 31)]
 
 p_groups = [[x, x+8, x+26, x+44, x+76] for x in range(5, 8)]
@@ -45,4 +47,5 @@ def env_friendly(r):
         return True
     else:
         return False
+  
   
