@@ -1,5 +1,13 @@
 ## Changelog
 
+### 0.1.26 - 2024-02-16
+
+* Various fixes
+* Added the get_graph() method to obtain the structure's graph using m3gnet implementation
+* Added get_bonds_blocks()
+* Fix for SOAP parameters in DScribe
+* improved the tutorial notebook
+
 ### 0.1.25 - 2023-11-30
 
 * Adding interstitial atoms to a structure

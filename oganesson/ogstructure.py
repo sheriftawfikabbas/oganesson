@@ -1,18 +1,30 @@
-from ase import Atoms, Atom
-from ase.cell import Cell
-from pymatgen.core import Structure
 import numpy as np
-from pymatgen.io.cif import CifParser
-from oganesson.utilities import epsilon
 from ase.neb import NEB
 import os
 import math
 from ase.io import read
 from typing import List, Optional, Tuple, Union
-    
+import random
+import uuid
+
+import matplotlib.pyplot as plt
+from ase import Atoms, Atom
+from ase.cell import Cell
+from pymatgen.core import Structure, Element
+from bsym.interface.pymatgen import unique_structure_substitutions
 from oganesson.utilities.bonds_dictionary import bonds_dictionary
 from oganesson.utilities import atomic_data
 from m3gnet.models import Relaxer
+from oganesson.molecular_dynamics import MolecularDynamics
+from pymatgen.io.cif import CifParser
+from oganesson.utilities import epsilon
+from diffusivity.diffusion_coefficients import DiffusionCoefficient
+from ase.md.md import Trajectory
+from pymatgen.analysis.diffraction.xrd import XRDCalculator
+from pymatgen.util.coord import pbc_shortest_vectors
+from m3gnet.graph._compute import *
+from m3gnet.utils._tf import tf_compute_distance_angle
+from m3gnet.graph._converters import RadiusCutoffGraphConverter
 
 class OgStructure:
     '''
@@ -145,6 +157,36 @@ class OgStructure:
                 else:
                     bond_data[k] = [Rij]
         return bond_data
+
+    def get_bonds_blocks(self,bond_data=None):
+        
+        if bond_data is None:
+            bond_data = {}
+        for c1 in self.structure:
+            c = self.structure.get_neighbors(site=c1, r=4)
+            for c2 in c:
+                Rij = self.distance(c1.coords, c2.coords)
+
+                g1 = atomic_data.get_group(c1.specie.number)
+                g2 = atomic_data.get_group(c2.specie.number)
+
+                if g1 < g2:
+                    k = str(g1)+'_'+str(g2)
+                else:
+                    k = str(g2)+'_'+str(g1)
+
+                if k in bond_data.keys():
+                    available = False
+                    for bb in bond_data[k]:
+                        if abs(bb-Rij) < 1e-5:
+                            available = True
+                            break
+                    if not available:
+                        bond_data[k] += [Rij]
+                else:
+                    bond_data[k] = [Rij]
+        return bond_data
+
 
     def translate(self, v):
         self.structure.translate_sites(range(len(self)),v)
@@ -369,7 +411,6 @@ class OgStructure:
                             f.close()
 
     def substitutions(self, atom_X, atom_X_substitution, atol=0.001):
-        from bsym.interface.pymatgen import unique_structure_substitutions
         new_structures = unique_structure_substitutions(
             self.structure, atom_X, atom_X_substitution, atol=atol)
         if 'X' not in atom_X_substitution.keys():
@@ -386,8 +427,6 @@ class OgStructure:
         for k in atom_X_substitution.keys():
             atom_X_s+=atom_X_substitution[k]*[k]
 
-        import random
-        from pymatgen.core import Element
         random.shuffle(atom_X_s)
         for iatom in range(len(self.structure)):
             if self.structure[iatom].specie.symbol == atom_X:
@@ -395,8 +434,6 @@ class OgStructure:
         return self
 
     def simulate(self, thermostat='anderson', steps=10000, temperature=300, ensemble='nvt', timestep=1, loginterval=1000, folder_tag=None):
-        from oganesson.molecular_dynamics import MolecularDynamics
-        import uuid
         self.dt = timestep
         if not os.path.isdir('og_lab'):
             os.mkdir('og_lab')
@@ -421,15 +458,13 @@ class OgStructure:
 
     def calculate_diffusivity(self, calculation_type='tracer', axis='all', ignore_n_images=0):
         if self.trajectory_file:
-            from diffusivity.diffusion_coefficients import DiffusionCoefficient
-            from ase.md.md import Trajectory
             diffusion_coefficients = DiffusionCoefficient(
                 Trajectory(self.trajectory_file), self.dt*1e-15, calculation_type=calculation_type, axis=axis)
             diffusion_coefficients.calculate(ignore_n_images=ignore_n_images)
             self.diffusion_coefficients = diffusion_coefficients.get_diffusion_coefficients()
 
             # Plotting the MSD curve for each species in the structure
-            import matplotlib.pyplot as plt
+            
             plt.figure(figsize=(15, 10))
             MSDs = []
             plots = []
@@ -462,10 +497,8 @@ class OgStructure:
             tag = self.structure.formula
         else:
             tag = self.structure_tag
-        from pymatgen.analysis.diffraction.xrd import XRDCalculator
         xrd_calculator = XRDCalculator()
         p = xrd_calculator.get_pattern(self.structure, two_theta_range=two_theta_range)
-        import matplotlib.pyplot as plt
         plt.figure(figsize=(15, 10))
         print('og:Plotting the XRD pattern')
         plt.plot(p.x,p.y, linewidth=1)
@@ -480,8 +513,6 @@ class OgStructure:
         """
         Gets the difference between the atomic positions of the current structure and `structure`.
         """
-        from pymatgen.util.coord import pbc_shortest_vectors
-
         structure = OgStructure(structure)
         lattice = self.structure.lattice
         return np.vstack([pbc_shortest_vectors(lattice,self.structure.frac_coords[i],structure().frac_coords[i]) for i in range(len(self))]).reshape(len(self),3)
@@ -745,17 +776,14 @@ class OgStructure:
     }
     '''
 
-    def add_interstitial(self,atom):
-        """
-        Creates an interstitial defect in the structure by adding the atom to the available voids.
-        The structure is embedded in a 3D grid. For simplicity, the grid is defined based on fractional coordinates. Each lattice side is divided into 100 points.
-        Scans voids by adding densities and choosing the density minima.
+    def add_interstitial(self,atom: Union[str,Element],cutoff=4,divisions=[10,10,10]):
+        """Creates an interstitial defect in the structure in-place by adding the atom to the available voids.
         """
         def density(r,R):
             return np.exp(-np.dot(r - R,r - R))
         supercell = self.structure.copy()
         supercell.make_supercell([3,3,3])
-        divisions = np.array([10,10,10])*3
+        divisions = np.array(divisions)*3
         n = np.zeros(divisions)
         for i in range(divisions[0]):
             for j in range(divisions[1]):
@@ -764,7 +792,7 @@ class OgStructure:
                     r = np.dot(f, supercell.lattice.matrix)
 
                     for R in supercell.cart_coords:
-                        if self.distance(R,r) < 4:
+                        if self.distance(R,r) <= cutoff:
                             n[i,j,k] += density(r,R)
         n = n[10:20,10:20,10:20]
         p = np.where(n == np.min(n))
@@ -772,7 +800,15 @@ class OgStructure:
         print(p)
         self.structure.append(atom,p)
         return self
-            
+    
+    def get_graph(self):
+        '''Converts the structure into a graph using the M3GNET tensorflow implementation
+        '''
+        r = RadiusCutoffGraphConverter()
+        mg = r.convert(self.structure)
+        graph = tf_compute_distance_angle(mg.as_list())
+        return graph
+
 
 
         

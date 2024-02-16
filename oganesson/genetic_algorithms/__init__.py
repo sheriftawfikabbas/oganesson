@@ -211,7 +211,6 @@ class GA:
             self.operators = OperationSelector([4, 3, 3],
                                             [self.pairing, self.softmut, self.strainmut])
         self.relaxed_population = False
-        # Relax the initial candidates
     
     def _create_or_read_fitness_file(self):
         if not os.path.isfile(self.path + '/fitness_each_iteration.json'):

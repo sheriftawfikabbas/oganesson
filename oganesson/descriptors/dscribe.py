@@ -107,38 +107,35 @@ class _DScribeACSF(DScribeDescriptors):
 
 class _DScribeSOAP(DScribeDescriptors):
     def __init__(self, structure: Union[Atoms, Structure, str, OgStructure],
-                 rcut=6,
-                 nmax=6,
-                 lmax=6,
+                 r_cut=6,
+                 n_max=6,
+                 l_max=6,
                  sigma=1.0,
                  rbf="gto",
                  weighting=None,
-                 crossover: bool = True,
                  average="off",
                  periodic: bool = False,
                  sparse: bool = False,
                  ) -> None:
         super().__init__(structure)
-        self.rcut = rcut,
-        self.nmax = nmax,
-        self.lmax = lmax,
+        self.r_cut = r_cut,
+        self.n_max = n_max,
+        self.l_max = l_max,
         self.sigma = sigma,
         self.rbf = rbf,
         self.weighting = weighting,
-        self.crossover = crossover,
         self.average = average,
         self.periodic = periodic,
         self.sparse = sparse
 
         self.dscribe = SOAP(
             species=self.structure().symbol_set,
-            rcut=rcut,
-            nmax=nmax,
-            lmax=lmax,
+            r_cut=r_cut,
+            n_max=n_max,
+            l_max=l_max,
             sigma=sigma,
             rbf=rbf,
             weighting=weighting,
-            crossover=crossover,
             average=average,
             periodic=periodic,
             sparse=sparse
