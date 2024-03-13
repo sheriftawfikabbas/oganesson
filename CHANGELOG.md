@@ -1,6 +1,10 @@
 ## Changelog
 
 
+### 0.1.28 - 2024-03-14
+
+* Critical fixes
+
 ### 0.1.27 - 2024-02-22
 
 * create_ripple now computes the amplitude

@@ -4,6 +4,7 @@ import os
 import math
 from ase.io import read
 from typing import List, Optional, Tuple, Union
+from numpy.typing import ArrayLike
 import random
 import uuid
 
@@ -441,14 +442,18 @@ class OgStructure:
             ii += 1
         return False
 
-    def relax(self, relaxation_method="m3gnet", cellbounds=None, steps=1000, relax_cell=True):
-        if relaxation_method=="m3gnet":
+    def relax(
+        self, relaxation_method="m3gnet", cellbounds=None, steps=1000, relax_cell=True, fmax=0.05
+    ):
+        if relaxation_method == "m3gnet":
             relaxer = Relaxer(relax_cell=relax_cell)
-            relax_results = relaxer.relax(self.structure, verbose=True, steps=steps,fmax=0.05)
+            relax_results = relaxer.relax(
+                self.structure, verbose=True, steps=steps, fmax=fmax
+            )
             self.structure = relax_results["final_structure"]
             self.total_energy = relax_results["trajectory"].energies[-1]
         else:
-            raise Exception('Only m3gnet is supported for relaxation at this stage.')
+            raise Exception("Only m3gnet is supported for relaxation at this stage.")
 
     def generate_neb(
         self, moving_atom_species, num_images=5, r=3, relaxation_method=None
@@ -782,8 +787,93 @@ class OgStructure:
 
         return rdf[1:], rr
 
+    def zero_z(self):
+        x = self.structure.cart_coords[:, 0]
+        y = self.structure.cart_coords[:, 1]
+        z = self.structure.cart_coords[:, 2]
+        z = z - z.min()
+        new_coords = np.array([x, y, z]).T
+        self.structure = Structure(
+            lattice=self.structure.lattice,
+            species=self.structure.species,
+            coords=new_coords,
+            coords_are_cartesian=True,
+        )
+        return self
+
+    def repeat(self, scaling_matrix: ArrayLike):
+        self.structure = self.structure.make_supercell(scaling_matrix)
+        return self
+    
+    def scale(self, s: Union[list, float]):
+        if isinstance(s, list):
+            new_lattice = Lattice.from_parameters(
+                self.structure.lattice.a * s[0],
+                self.structure.lattice.b * s[1],
+                self.structure.lattice.c * s[2],
+                self.structure.lattice.alpha,
+                self.structure.lattice.beta,
+                self.structure.lattice.gamma,
+            )
+        elif isinstance(s, float):
+            new_lattice = Lattice.from_parameters(
+                self.structure.lattice.a * s,
+                self.structure.lattice.b * s,
+                self.structure.lattice.c * s,
+                self.structure.lattice.alpha,
+                self.structure.lattice.beta,
+                self.structure.lattice.gamma,
+            )
+        else:
+            raise Exception("Must provide either a list or a float.")
+        self.structure = Structure(
+            lattice=new_lattice,
+            species=self.structure.species,
+            coords=self.structure.frac_coords,
+            coords_are_cartesian=False,
+        )
+        return self
+
+    def scale_lattice_only(self, s: Union[list, float]):
+        coords = self.structure.cart_coords
+        if isinstance(s, list):
+            new_lattice = Lattice.from_parameters(
+                self.structure.lattice.a * s[0],
+                self.structure.lattice.b * s[1],
+                self.structure.lattice.c * s[2],
+                self.structure.lattice.alpha,
+                self.structure.lattice.beta,
+                self.structure.lattice.gamma,
+            )
+        elif isinstance(s, float):
+            new_lattice = Lattice.from_parameters(
+                self.structure.lattice.a * s,
+                self.structure.lattice.b * s,
+                self.structure.lattice.c * s,
+                self.structure.lattice.alpha,
+                self.structure.lattice.beta,
+                self.structure.lattice.gamma,
+            )
+        else:
+            raise Exception("Must provide either a list or a float.")
+        self.structure = Structure(
+            lattice=new_lattice,
+            species=self.structure.species,
+            coords=coords,
+            coords_are_cartesian=True,
+        )
+        return self
+
+
     def create_ripple(
-        self, axis, units, strain, amplitude=None, relax=False, steps=10,write_intermediate=False
+        self,
+        axis,
+        units,
+        strain,
+        amplitude=None,
+        relax=False,
+        steps=10,
+        write_intermediate=False,
     ):
         """
         The amplitude will be obtained from a complicated integral equation, given the length or strain.
@@ -801,9 +891,9 @@ class OgStructure:
             original_length = self.structure.lattice.b
         elif axis == "x":
             original_length = self.structure.lattice.a
-        target_length = strain*original_length
+        target_length = strain * original_length
 
-        def _make_wave(length):            
+        def _make_wave(length):
             # The following uses the arc length equation, but it doesn't work:
             #
             # x, A = symbols('x A')
@@ -842,7 +932,7 @@ class OgStructure:
                     self.structure.lattice.gamma,
                 )
 
-            print('og:Now wave amplitude is',amplitude)
+            print("og:Now wave amplitude is", amplitude)
 
             self.structure = Structure(
                 lattice=new_lattice,
@@ -850,7 +940,7 @@ class OgStructure:
                 coords=self.structure.frac_coords,
                 coords_are_cartesian=False,
             )
-            
+
             x = self.structure.cart_coords[:, 0]
             y = self.structure.cart_coords[:, 1]
             z = self.structure.cart_coords[:, 2]
@@ -876,16 +966,23 @@ class OgStructure:
             # Thicker layers will require a relaxation loop
             # The wave is created over multiple relaxation steps, each step the amplitude increases by epsilon
             length = original_length
-            delta = (original_length - target_length)/steps
+            delta = (original_length - target_length) / steps
             length -= delta
 
-            print('og:Creating a wave by relaxing the structure with delta =', delta)
+            fn = str(uuid.uuid4())
+
+            print("og:Creating a wave by relaxing the structure with delta =", delta)
             while length >= target_length:
-                print('og:Current wavelength:',length,', target wavelength:',target_length)
+                print(
+                    "og:Current wavelength:",
+                    length,
+                    ", target wavelength:",
+                    target_length,
+                )
                 _make_wave(length)
                 self.relax(relax_cell=False)
                 if write_intermediate:
-                    self.structure.to('ripple_intermediate_'+str(length)+'.cif')
+                    self.structure.to("ripple_" + fn + '_' + str(length) + ".cif")
                 length -= delta
 
             return self
