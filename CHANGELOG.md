@@ -1,6 +1,10 @@
 ## Changelog
 
 
+### 0.1.29 - 2024-03-21
+
+* Added theoretical capacity formula
+
 ### 0.1.28 - 2024-03-14
 
 * Critical fixes

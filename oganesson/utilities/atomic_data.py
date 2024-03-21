@@ -1,4 +1,6 @@
 
+import numpy as np
+
 s_groups = [[
     4, 12, 20, 38, 56
 ],
@@ -42,6 +44,7 @@ labels =\
      "Fr", "Ra", "Ac", "Th", "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og"
      ]
 
+
 toxic_elements = [33,48,24,82,80]
 
 def env_friendly(r):
@@ -62,3 +65,6 @@ def get_group(a):
     else:
         print('Atomic number:',a)
         raise Exception('Wrong atomic number!')
+
+def atomic_number_from_symbol(s:str):
+    return np.where(np.array(labels) == s)[0]

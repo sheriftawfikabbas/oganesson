@@ -13,13 +13,10 @@ from ase import Atoms, Atom
 from ase.cell import Cell
 from pymatgen.core import Structure, Element
 from bsym.interface.pymatgen import unique_structure_substitutions
-from oganesson.utilities.bonds_dictionary import bonds_dictionary
-from oganesson.utilities import atomic_data
 from m3gnet.models import Relaxer
-from oganesson.molecular_dynamics import MolecularDynamics
 from pymatgen.io.cif import CifParser
 from pymatgen.core import Lattice
-from oganesson.utilities import epsilon
+
 from diffusivity.diffusion_coefficients import DiffusionCoefficient
 from ase.md.md import Trajectory
 from pymatgen.analysis.diffraction.xrd import XRDCalculator
@@ -27,6 +24,11 @@ from pymatgen.util.coord import pbc_shortest_vectors
 from m3gnet.graph._compute import *
 from m3gnet.graph._converters import RadiusCutoffGraphConverter
 from sympy import integrate, cos, pi, sqrt, symbols, solve, sin
+from oganesson.molecular_dynamics import MolecularDynamics
+from oganesson.utilities import epsilon
+from oganesson.utilities.constants import F
+from oganesson.utilities.bonds_dictionary import bonds_dictionary
+from oganesson.utilities import atomic_data
 
 
 class OgStructure:
@@ -1146,9 +1148,30 @@ class OgStructure:
         self.structure.append(atom, p)
         return self
 
+    def get_atom_count(self,atom:str):
+        an = np.where(np.array(atomic_data.labels) == atom)[0]
+        c = np.array(self.structure.atomic_numbers)
+        return len(c[c == an])
+    
+    def calculate_molecular_mass(self):
+        m = 0
+        for a in self.structure:
+            m += a.specie.atomic_mass
+        return m
+
     def get_graph(self):
         """Converts the structure into a graph using the M3GNET tensorflow implementation"""
         r = RadiusCutoffGraphConverter()
         mg = r.convert(self.structure)
         graph = tf_compute_distance_angle(mg.as_list())
         return graph
+
+    def calculate_theoretical_capacity(self,charge_carrier:str,n=None):
+        '''
+        Formula:
+        Q = (nF) / (3600*M_w)*1000   mAh g-1
+        '''
+        if n is None:
+            n = self.get_atom_count(charge_carrier)
+        M_w = self.calculate_molecular_mass()/1000
+        return n*F/(3600*M_w)

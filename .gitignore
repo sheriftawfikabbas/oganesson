@@ -164,7 +164,7 @@ neb_path_*/
 ./run_*/
 jolt_lab
 og_lab
-*.cif
+./*.cif
 design/
 test.py
 triplets.py
