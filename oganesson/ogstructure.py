@@ -445,20 +445,20 @@ class OgStructure:
         return False
 
     def relax(
-        self, relaxation_method="m3gnet", cellbounds=None, steps=1000, relax_cell=True, fmax=0.05
+        self, model="m3gnet", cellbounds=None, steps=1000, relax_cell=True, fmax=0.05, verbose=True
     ):
-        if relaxation_method == "m3gnet":
-            relaxer = Relaxer(relax_cell=relax_cell)
-            relax_results = relaxer.relax(
-                self.structure, verbose=True, steps=steps, fmax=fmax
-            )
-            self.structure = relax_results["final_structure"]
-            self.total_energy = relax_results["trajectory"].energies[-1]
+        if model == "m3gnet":
+            relaxer = Relaxer(relax_cell=relax_cell)    
         else:
-            raise Exception("Only m3gnet is supported for relaxation at this stage.")
+            relaxer = Relaxer(potential=model,relax_cell=relax_cell)
+        relax_results = relaxer.relax(
+            self.structure, verbose=verbose, steps=steps, fmax=fmax
+        )
+        self.structure = relax_results["final_structure"]
+        self.total_energy = relax_results["trajectory"].energies[-1]
 
     def generate_neb(
-        self, moving_atom_species, num_images=5, r=3, relaxation_method=None
+        self, moving_atom_species, num_images=5, r=3, model="m3gnet",
     ) -> None:
         structure = self.structure
         self.neb_paths = []
@@ -513,8 +513,7 @@ class OgStructure:
                         self.neb.interpolate(mic=True)
                         for i in range(len(self.images)):
                             self.images[i] = OgStructure(self.images[i])
-                            if relaxation_method == "m3gnet":
-                                self.images[i] = self.images[i].relax()
+                            self.images[i] = self.images[i].relax(model=model)
                             image_str = self.images[i].structure.to(fmt="poscar")
                             f = open(neb_folder + "/" + str(i).zfill(2), "w")
                             f.write(image_str)
@@ -875,7 +874,7 @@ class OgStructure:
         amplitude=None,
         relax=False,
         steps=10,
-        write_intermediate=False,
+        write_intermediate=False,model="m3gnet"
     ):
         """
         The amplitude will be obtained from a complicated integral equation, given the length or strain.
@@ -982,7 +981,7 @@ class OgStructure:
                     target_length,
                 )
                 _make_wave(length)
-                self.relax(relax_cell=False)
+                self.relax(relax_cell=False,model=model)
                 if write_intermediate:
                     self.structure.to("ripple_" + fn + '_' + str(length) + ".cif")
                 length -= delta

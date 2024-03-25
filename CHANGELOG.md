@@ -1,6 +1,11 @@
 ## Changelog
 
 
+### 0.1.30 - 2024-03-26
+
+* Enabled different GNN models based on m3gnet for structure relaxation
+* Critical fix for GA
+
 ### 0.1.29 - 2024-03-21
 
 * Added theoretical capacity formula
