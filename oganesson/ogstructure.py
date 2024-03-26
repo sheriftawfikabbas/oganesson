@@ -445,10 +445,14 @@ class OgStructure:
         return False
 
     def relax(
-        self, model="m3gnet", cellbounds=None, steps=1000, relax_cell=True, fmax=0.05, verbose=True
+        self, model="diep", cellbounds=None, steps=1000, relax_cell=True, fmax=0.05, verbose=True
     ):
         if model == "m3gnet":
-            relaxer = Relaxer(relax_cell=relax_cell)    
+            relaxer = Relaxer(relax_cell=relax_cell)
+        elif model == "diep":
+            potential = matgl.load_model("../pes_models/diep_pes")
+            potential.calc_stresses = True
+            relaxer = Relaxer(potential=potential,relax_cell=relax_cell)
         else:
             potential = matgl.load_model(model)
             potential.calc_stresses = True
@@ -460,7 +464,7 @@ class OgStructure:
         self.total_energy = relax_results["trajectory"].energies[-1]
 
     def generate_neb(
-        self, moving_atom_species, num_images=5, r=3, model="m3gnet",
+        self, moving_atom_species, num_images=5, r=3, model="diep",
     ) -> None:
         structure = self.structure
         self.neb_paths = []
@@ -876,7 +880,7 @@ class OgStructure:
         amplitude=None,
         relax=False,
         steps=10,
-        write_intermediate=False,model="m3gnet"
+        write_intermediate=False,model="diep"
     ):
         """
         The amplitude will be obtained from a complicated integral equation, given the length or strain.

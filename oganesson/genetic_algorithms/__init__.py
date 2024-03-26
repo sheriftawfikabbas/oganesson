@@ -30,7 +30,7 @@ class GA:
         raw_score = -energy
         set_raw_score(atoms, raw_score)
 
-    def relax(self, atoms, cellbounds=None, model="m3gnet"):
+    def relax(self, atoms, cellbounds=None, model="diep"):
         structure = OgStructure(atoms)
         structure.relax(verbose=self.verbose, steps=self.steps, model=model)
         e = float(structure.total_energy)
@@ -284,7 +284,7 @@ class GA:
         json.dump(self.fitness_each_iteration, f)
         f.close()
 
-    def evolve(self, num_offsprings=20, model="m3gnet"):
+    def evolve(self, num_offsprings=20, model="diep"):
         energies_for_step = []
 
         if not self.relaxed_population:

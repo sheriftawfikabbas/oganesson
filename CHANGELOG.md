@@ -1,5 +1,9 @@
 ## Changelog
 
+### 0.1.33 - 2024-03-26
+
+* Added the DIEP PES model for relaxation, and set as default
+
 ### 0.1.32 - 2024-03-26
 
 * Hot fix
