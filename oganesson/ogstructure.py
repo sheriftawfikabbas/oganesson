@@ -451,6 +451,7 @@ class OgStructure:
             relaxer = Relaxer(relax_cell=relax_cell)    
         else:
             potential = matgl.load_model(model)
+            potential.calc_stresses = True
             relaxer = Relaxer(potential=potential,relax_cell=relax_cell)
         relax_results = relaxer.relax(
             self.structure, verbose=verbose, steps=steps, fmax=fmax

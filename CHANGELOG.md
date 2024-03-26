@@ -1,5 +1,9 @@
 ## Changelog
 
+### 0.1.32 - 2024-03-26
+
+* Hot fix
+
 ### 0.1.31 - 2024-03-26
 
 * Replace M3GNET Relaxer with Matgl Relaxer
