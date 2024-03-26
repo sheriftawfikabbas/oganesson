@@ -21,7 +21,6 @@ class Poscar:
         mpposcar = MPPoscar(self.ogstructure(),selective_dynamics=constraints)
         return mpposcar.get_string()
         
-        
 
 class Outcar:
     def __init__(self, outcar_directory:str="./", outcar_file:str='OUTCAR', poscar_file:str=None) -> None:
@@ -115,3 +114,59 @@ class Outcar:
                                                 coords=positions_vectors[i], lattice=lattice_vectors[i], coords_are_cartesian=True).as_dict()]
 
         return structures, forces_vectors.tolist(), stress_matrices
+
+    def get_maximum_force(self):
+        TAG = 'TOTAL-FORCE (eV/Angst)'
+        if self.poscar_file is None:
+            print('og:Must supply a POSCAR file along with the OUTCAR file to extract the maximum force.')
+            return None
+        outcarf = open(self.outcar_file, 'r')
+        outcar = outcarf.readlines()
+        outcarf.close()
+        poscarf = open(self.poscar_file, 'r')
+        poscar = poscarf.readlines()
+        poscarf.close()
+        num_atoms = sum([int(x) for x in poscar[6].split()])
+        list_of_tags = []
+        for il in range(len(outcar)):
+            if TAG in outcar[il]:
+                list_of_tags += [il]
+        i = list_of_tags[-1]
+        if i >= len(outcar) or i+2+num_atoms >= len(outcar):
+            i = list_of_tags[-2]
+        lines = outcar[i+2:i+2+num_atoms]
+        forces = np.array([l.split()[3:6] for l in lines]).astype(np.float64)
+        print('Maximum force =', forces.max())
+        return forces.max()
+
+
+def get_bandgap(vasp_folder='./'):
+    try:
+        feigenval = open(vasp_folder+'EIGENVAL', 'r')
+        eigenval = feigenval.readlines()
+        feigenval.close()
+        fdoscar = open(vasp_folder+'DOSCAR', 'r')
+        doscar = fdoscar.readlines()
+        fdoscar.close()
+        fermi = float(doscar[5].split()[3])
+        info = eigenval[5].split()
+        num_points = int(info[2])
+        num_bands = int(info[1])
+
+        VB = []
+        CB = []
+
+        for b in range(num_bands):
+            vals = eigenval[7 + (num_points+2)* b:7 + (num_points+2)*(b+1)]
+            vals = vals [1:-1]
+            vals = np.array([v.split() for v in vals])[:,1].astype(np.float64)
+            VB += [vals[vals <= fermi]]
+            CB += [vals[vals > fermi]]
+
+        CBM = min([x[0] for x in CB])
+        VBM = max([x[-1] for x in VB])
+        bandgap = CBM - VBM
+        print(bandgap)
+        return bandgap
+    except:
+        pass

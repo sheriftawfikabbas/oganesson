@@ -13,10 +13,10 @@ from ase import Atoms, Atom
 from ase.cell import Cell
 from pymatgen.core import Structure, Element
 from bsym.interface.pymatgen import unique_structure_substitutions
-from m3gnet.models import Relaxer
+from matgl.ext.ase import Relaxer
 from pymatgen.io.cif import CifParser
 from pymatgen.core import Lattice
-
+import matgl
 from diffusivity.diffusion_coefficients import DiffusionCoefficient
 from ase.md.md import Trajectory
 from pymatgen.analysis.diffraction.xrd import XRDCalculator
@@ -450,7 +450,8 @@ class OgStructure:
         if model == "m3gnet":
             relaxer = Relaxer(relax_cell=relax_cell)    
         else:
-            relaxer = Relaxer(potential=model,relax_cell=relax_cell)
+            potential = matgl.load_model(model)
+            relaxer = Relaxer(potential=potential,relax_cell=relax_cell)
         relax_results = relaxer.relax(
             self.structure, verbose=verbose, steps=steps, fmax=fmax
         )

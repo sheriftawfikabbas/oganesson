@@ -1,5 +1,9 @@
 ## Changelog
 
+### 0.1.31 - 2024-03-26
+
+* Replace M3GNET Relaxer with Matgl Relaxer
+* Added VASP postprocessing functions
 
 ### 0.1.30 - 2024-03-26
 
