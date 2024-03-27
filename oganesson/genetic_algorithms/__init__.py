@@ -297,7 +297,7 @@ class GA:
                         os.mkdir(self.path_initial)
 
                     write(self.path_initial + "/" + str(a.info["confid"]) + ".cif", a)
-
+                print('og:Fitness function: PES potential',self.model)
                 relaxed_a, e = self.relax(a, cellbounds=self.cellbounds, model=self.model)
                 energies_for_step += [e]
                 a.positions = relaxed_a.positions

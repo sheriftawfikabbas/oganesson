@@ -447,16 +447,18 @@ class OgStructure:
     def relax(
         self, model="diep", cellbounds=None, steps=1000, relax_cell=True, fmax=0.05, verbose=True
     ):
-        this_dir = os.path.abspath(os.path.dirname(__file__))
-        
+        print('og:Loading PES model:',model)
+        this_dir = os.path.abspath(os.path.dirname(__file__))        
         if model == "m3gnet":
             relaxer = Relaxer(relax_cell=relax_cell)
         elif model == "diep":
             potential = matgl.load_model(this_dir + "/pes_models/diep_pes")
+            print('og:Loaded PES model: DIEP')
             potential.calc_stresses = True
             relaxer = Relaxer(potential=potential,relax_cell=relax_cell)
         else:
             potential = matgl.load_model(model)
+            print('og:Loaded PES model:',model)
             potential.calc_stresses = True
             relaxer = Relaxer(potential=potential,relax_cell=relax_cell)
         relax_results = relaxer.relax(

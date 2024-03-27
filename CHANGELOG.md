@@ -1,5 +1,9 @@
 ## Changelog
 
+### 0.1.35 - 2024-03-27
+
+* Hot fix for loading local PES models
+
 ### 0.1.34 - 2024-03-27
 
 * Hot fix for loading local PES models

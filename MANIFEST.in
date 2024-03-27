@@ -4,3 +4,5 @@ include CONTRIBUTING.rst
 include CHANGELOG.md
 include VERSION
 include oganesson/VERSION
+include oganesson/pes_models/*/*.json
+include oganesson/pes_models/*/*.pt
