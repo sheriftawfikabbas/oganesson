@@ -54,7 +54,7 @@ class GA:
         experiment_tag=None,
         write_initial_structures=False,
         rmax=10,
-        model="diep"
+        model="diep",
     ) -> None:
         # Either establish a new population from scratch by randomly filling boxes,
         # or start from a specified population of structures
@@ -261,12 +261,15 @@ class GA:
             print("og:Including the Rich2poorPermutation in the list of GA operators")
             self.rich2poor = Rich2poorPermutation(self.species, rmax=rmax)
             self.operators = OperationSelector(
-                [3, 2, 1.5, 1.5],
-                [self.rich2poor, self.pairing, self.softmut, self.strainmut],
+                [3, 2, 3],
+                # [self.rich2poor, self.pairing, self.softmut, self.strainmut],
+                [self.rich2poor, self.pairing, self.strainmut],
             )
         else:
             self.operators = OperationSelector(
-                [4, 3, 3], [self.pairing, self.softmut, self.strainmut]
+                # [4, 3, 3], [self.pairing, self.softmut, self.strainmut]
+                [4, 6],
+                [self.pairing, self.strainmut],
             )
         self.relaxed_population = False
 
@@ -297,8 +300,10 @@ class GA:
                         os.mkdir(self.path_initial)
 
                     write(self.path_initial + "/" + str(a.info["confid"]) + ".cif", a)
-                print('og:Fitness function: PES potential',self.model)
-                relaxed_a, e = self.relax(a, cellbounds=self.cellbounds, model=self.model)
+                print("og:Fitness function: PES potential", self.model)
+                relaxed_a, e = self.relax(
+                    a, cellbounds=self.cellbounds, model=self.model
+                )
                 energies_for_step += [e]
                 a.positions = relaxed_a.positions
                 a.cell = relaxed_a.cell
@@ -346,7 +351,9 @@ class GA:
                     write(self.path_initial + "/" + str(a3.info["confid"]) + ".cif", a3)
 
                 # Relax the new candidate and save it
-                relaxed_a, e = self.relax(a3, cellbounds=self.cellbounds, model=self.model)
+                relaxed_a, e = self.relax(
+                    a3, cellbounds=self.cellbounds, model=self.model
+                )
                 energies_for_step += [e]
                 a3.positions = relaxed_a.positions
                 a3.cell = relaxed_a.cell

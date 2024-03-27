@@ -1,5 +1,10 @@
 ## Changelog
 
+
+### 0.1.36 - 2024-03-28
+
+* SoftMutation removed from GA because of its limited support for elements
+
 ### 0.1.35 - 2024-03-27
 
 * Hot fix for loading local PES models
