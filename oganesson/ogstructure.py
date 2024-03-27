@@ -24,7 +24,7 @@ from pymatgen.util.coord import pbc_shortest_vectors
 from m3gnet.graph._compute import *
 from m3gnet.graph._converters import RadiusCutoffGraphConverter
 from sympy import integrate, cos, pi, sqrt, symbols, solve, sin
-from oganesson.molecular_dynamics import MolecularDynamics
+from matgl.ext.ase import MolecularDynamics
 from oganesson.utilities import epsilon
 from oganesson.utilities.constants import F
 from oganesson.utilities.bonds_dictionary import bonds_dictionary
@@ -445,22 +445,28 @@ class OgStructure:
         return False
 
     def relax(
-        self, model="diep", cellbounds=None, steps=1000, relax_cell=True, fmax=0.05, verbose=True
+        self,
+        model="diep",
+        cellbounds=None,
+        steps=1000,
+        relax_cell=True,
+        fmax=0.05,
+        verbose=True,
     ):
-        print('og:Loading PES model:',model)
-        this_dir = os.path.abspath(os.path.dirname(__file__))        
+        print("og:Loading PES model:", model)
+        this_dir = os.path.abspath(os.path.dirname(__file__))
         if model == "m3gnet":
             relaxer = Relaxer(relax_cell=relax_cell)
         elif model == "diep":
             potential = matgl.load_model(this_dir + "/pes_models/diep_pes")
-            print('og:Loaded PES model: DIEP')
+            print("og:Loaded PES model: DIEP")
             potential.calc_stresses = True
-            relaxer = Relaxer(potential=potential,relax_cell=relax_cell)
+            relaxer = Relaxer(potential=potential, relax_cell=relax_cell)
         else:
             potential = matgl.load_model(model)
-            print('og:Loaded PES model:',model)
+            print("og:Loaded PES model:", model)
             potential.calc_stresses = True
-            relaxer = Relaxer(potential=potential,relax_cell=relax_cell)
+            relaxer = Relaxer(potential=potential, relax_cell=relax_cell)
         relax_results = relaxer.relax(
             self.structure, verbose=verbose, steps=steps, fmax=fmax
         )
@@ -468,7 +474,11 @@ class OgStructure:
         self.total_energy = relax_results["trajectory"].energies[-1]
 
     def generate_neb(
-        self, moving_atom_species, num_images=5, r=3, model="diep",
+        self,
+        moving_atom_species,
+        num_images=5,
+        r=3,
+        model="diep",
     ) -> None:
         structure = self.structure
         self.neb_paths = []
@@ -562,7 +572,18 @@ class OgStructure:
         timestep=1,
         loginterval=1000,
         folder_tag=None,
+        model="diep",
     ):
+        this_dir = os.path.abspath(os.path.dirname(__file__))
+        if model == "m3gnet":
+            potential = matgl.load_model("M3GNet-MP-2021.2.8-PES")
+        elif model == "diep":
+            potential = matgl.load_model(this_dir + "/pes_models/diep_pes")
+            potential.calc_stresses = True
+        else:
+            potential = matgl.load_model(model)
+            potential.calc_stresses = True
+        print("og:Loaded PES model:", model)
         self.dt = timestep
         if not os.path.isdir("og_lab"):
             os.mkdir("og_lab")
@@ -577,8 +598,8 @@ class OgStructure:
         )
         self.log_file = "og_lab/" + self.folder_tag + "/" + str(temperature) + ".log"
         md = MolecularDynamics(
+            potential=potential,
             atoms=self.to_ase(),
-            thermostat=thermostat,
             temperature=temperature,
             timestep=timestep,
             ensemble=ensemble,
@@ -815,7 +836,7 @@ class OgStructure:
     def repeat(self, scaling_matrix: ArrayLike):
         self.structure = self.structure.make_supercell(scaling_matrix)
         return self
-    
+
     def scale(self, s: Union[list, float]):
         if isinstance(s, list):
             new_lattice = Lattice.from_parameters(
@@ -875,7 +896,6 @@ class OgStructure:
         )
         return self
 
-
     def create_ripple(
         self,
         axis,
@@ -884,7 +904,8 @@ class OgStructure:
         amplitude=None,
         relax=False,
         steps=10,
-        write_intermediate=False,model="diep"
+        write_intermediate=False,
+        model="diep",
     ):
         """
         The amplitude will be obtained from a complicated integral equation, given the length or strain.
@@ -991,9 +1012,9 @@ class OgStructure:
                     target_length,
                 )
                 _make_wave(length)
-                self.relax(relax_cell=False,model=model)
+                self.relax(relax_cell=False, model=model)
                 if write_intermediate:
-                    self.structure.to("ripple_" + fn + '_' + str(length) + ".cif")
+                    self.structure.to("ripple_" + fn + "_" + str(length) + ".cif")
                 length -= delta
 
             return self
@@ -1157,11 +1178,11 @@ class OgStructure:
         self.structure.append(atom, p)
         return self
 
-    def get_atom_count(self,atom:str):
+    def get_atom_count(self, atom: str):
         an = np.where(np.array(atomic_data.labels) == atom)[0]
         c = np.array(self.structure.atomic_numbers)
         return len(c[c == an])
-    
+
     def calculate_molecular_mass(self):
         m = 0
         for a in self.structure:
@@ -1175,12 +1196,12 @@ class OgStructure:
         graph = tf_compute_distance_angle(mg.as_list())
         return graph
 
-    def calculate_theoretical_capacity(self,charge_carrier:str,n=None):
-        '''
+    def calculate_theoretical_capacity(self, charge_carrier: str, n=None):
+        """
         Formula:
         Q = (nF) / (3600*M_w)*1000   mAh g-1
-        '''
+        """
         if n is None:
             n = self.get_atom_count(charge_carrier)
-        M_w = self.calculate_molecular_mass()/1000
-        return n*F/(3600*M_w)
+        M_w = self.calculate_molecular_mass() / 1000
+        return n * F / (3600 * M_w)

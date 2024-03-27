@@ -1,6 +1,10 @@
 ## Changelog
 
 
+### 0.1.37 - 2024-03-28
+
+* Fix for AIMD simulation
+
 ### 0.1.36 - 2024-03-28
 
 * SoftMutation removed from GA because of its limited support for elements
