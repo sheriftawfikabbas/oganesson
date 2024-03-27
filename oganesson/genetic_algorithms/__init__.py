@@ -17,7 +17,6 @@ from ase.data import atomic_numbers
 from ase.ga.startgenerator import StartGenerator
 from ase.ga.data import PrepareDB
 from ase.ga import set_raw_score
-from m3gnet.models import Relaxer
 from oganesson.ogstructure import OgStructure
 import os
 from typing import List
@@ -55,6 +54,7 @@ class GA:
         experiment_tag=None,
         write_initial_structures=False,
         rmax=10,
+        model="diep"
     ) -> None:
         # Either establish a new population from scratch by randomly filling boxes,
         # or start from a specified population of structures
@@ -64,6 +64,7 @@ class GA:
         self.experiment_tag = experiment_tag
         self.write_initial_structures = write_initial_structures
         self.rmax = rmax
+        self.model = model
         if not os.path.isdir(self.path):
             os.mkdir(self.path)
         if experiment_tag is None:
@@ -284,7 +285,7 @@ class GA:
         json.dump(self.fitness_each_iteration, f)
         f.close()
 
-    def evolve(self, num_offsprings=20, model="diep"):
+    def evolve(self, num_offsprings=20):
         energies_for_step = []
 
         if not self.relaxed_population:
@@ -297,7 +298,7 @@ class GA:
 
                     write(self.path_initial + "/" + str(a.info["confid"]) + ".cif", a)
 
-                relaxed_a, e = self.relax(a, cellbounds=self.cellbounds, model=model)
+                relaxed_a, e = self.relax(a, cellbounds=self.cellbounds, model=self.model)
                 energies_for_step += [e]
                 a.positions = relaxed_a.positions
                 a.cell = relaxed_a.cell
@@ -345,7 +346,7 @@ class GA:
                     write(self.path_initial + "/" + str(a3.info["confid"]) + ".cif", a3)
 
                 # Relax the new candidate and save it
-                relaxed_a, e = self.relax(a3, cellbounds=self.cellbounds, model=model)
+                relaxed_a, e = self.relax(a3, cellbounds=self.cellbounds, model=self.model)
                 energies_for_step += [e]
                 a3.positions = relaxed_a.positions
                 a3.cell = relaxed_a.cell

@@ -1,5 +1,9 @@
 ## Changelog
 
+### 0.1.34 - 2024-03-27
+
+* Hot fix for loading local PES models
+
 ### 0.1.33 - 2024-03-26
 
 * Added the DIEP PES model for relaxation, and set as default

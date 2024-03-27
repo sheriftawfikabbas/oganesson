@@ -27,6 +27,7 @@ setup(
                       'numpy',
                       'pymatgen',
                       'm3gnet',
+                      'matgl',
                     #   'gpaw',
                       'diffusivity'],
 
