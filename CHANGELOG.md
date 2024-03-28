@@ -1,6 +1,12 @@
 ## Changelog
 
 
+### 0.1.38 - 2024-03-28
+
+* Added the fracture() method
+* Support for relaxation and dynamics using constraints
+* Fix for AIMD simulation
+
 ### 0.1.37 - 2024-03-28
 
 * Fix for AIMD simulation
