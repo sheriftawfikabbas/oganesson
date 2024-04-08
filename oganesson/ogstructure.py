@@ -29,7 +29,7 @@ from oganesson.utilities import epsilon
 from oganesson.utilities.constants import F
 from oganesson.utilities.bonds_dictionary import bonds_dictionary
 from oganesson.utilities import atomic_data
-from ase.constraints import FixAtoms, ExternalForce 
+from ase.constraints import FixAtoms, ExternalForce
 
 
 class OgStructure:
@@ -872,6 +872,15 @@ class OgStructure:
         )
         return self
 
+    def set_positions(self,positions, is_cartesian=True):
+        self.structure = Structure(
+            lattice=self.structure.lattice,
+            species=self.structure.species,
+            coords=positions,
+            coords_are_cartesian=True,
+        )
+        return self
+
     def scale_lattice_only(self, s: Union[list, float]):
         coords = self.structure.cart_coords
         if isinstance(s, list):
@@ -911,6 +920,7 @@ class OgStructure:
         relax=False,
         steps=10,
         write_intermediate=False,
+        intermediates_folder=None,
         model="diep",
     ):
         """
@@ -1020,7 +1030,14 @@ class OgStructure:
                 _make_wave(length)
                 self.relax(relax_cell=False, model=model)
                 if write_intermediate:
-                    self.structure.to("ripple_" + fn + "_" + str(length) + ".cif")
+                    self.structure.to(
+                        intermediates_folder
+                        + "/ripple_"
+                        + fn
+                        + "_"
+                        + str(length)
+                        + ".cif"
+                    )
                 length -= delta
 
             return self
@@ -1028,13 +1045,21 @@ class OgStructure:
     def fracture(
         self,
         strain,
+        strain_per_step=1.005,
         axis="z",
-        steps=10,
+        steps=100,
         translation_step=0.1,
         write_intermediate=False,
         intermediates_folder="./",
         model="diep",
-        method: Union["opt_lattice_expansion", "opt_pulling","md_pulling"] = "opt_pulling",
+        method: Union[
+            "opt_lattice_expansion",
+            "opt_pulling",
+            "opt_pulling_expansion",
+            "md_pulling",
+        ] = "opt_pulling_expansion",
+        freeze_size=3,
+        freeze_method: Union["sample", "all", "distribution"] = "all",
     ):
         axis_dict = {"x": 0, "y": 1, "z": 2}
         if axis == "x":
@@ -1046,62 +1071,40 @@ class OgStructure:
 
         length = original_length
 
-        fn = 'fracture_'+str(uuid.uuid4())
+        fn = "fracture_" + str(uuid.uuid4())
 
         if method == "opt_lattice_expansion":
-            target_length = strain * original_length
-
-            length = original_length
-            delta = (original_length - target_length) / steps
-
             print(
                 "og:Creating a fracture by homogeneous lattice expansion, by optimizing the structure at every step."
             )
-            for _ in range(steps):
-                print(
-                    "og:Current length:",
-                    length,
-                    ", target length:",
-                    target_length,
-                )
-                if axis == "x":
-                    self.scale([length, 1, 1])
-                elif axis == "y":
-                    self.scale([1, length, 1])
-                else:
-                    self.scale([1, 1, length])
+            for step in range(steps):
+                scale_vector = [0,0,0]
+                scale_vector[axis_dict[axis]] = strain_per_step
+                self.scale(scale_vector)
 
                 self.relax(relax_cell=False, model=model)
                 if write_intermediate:
                     self.structure.to(
-                        intermediates_folder
-                        + "/"
-                        + fn
-                        + "_"
-                        + str(length)
-                        + ".cif"
+                        intermediates_folder + "/" + fn + "_expansionstep_" + str(step) + ".cif"
                     )
-                if strain < 1:
-                    length -= delta
-                else:
-                    length += delta
-        elif method == "opt_pulling":
-            print("og:Creating a fracture by pulling an endpoint and fixing the other")
+        elif method == "opt_pulling_expansion":
             """
             The structure is placed in a larger lattice. The terminal atoms are translated and then frozen.
             Left terminal atoms: freeze.
             Right terminal atoms: move then freeze.
-            Terminal atoms selected are within 3 Angstroms from the lattice edge.
+            Terminal atoms selected are within `freeze_size` Angstroms from the lattice edge.
             """
-            
+            print(
+                "og:Creating a fracture by pulling an endpoint while fixing the other, after expanding the lattice."
+            )
             target_length = strain * original_length
             length = original_length
             delta = translation_step
             delta *= -1 if strain < 1 else 1
             steps = abs(int((original_length - target_length) / delta))
-            print("og:Number of relaxations:",steps)
+            print("og:Number of relaxations:", steps)
             # First, make sure there are no atoms at the zero position. Otherwise, this will lead to trouble when extending the lattice length along the `axis` direction.
-            translation_vector=[0,0,0]
+            translation_vector = [0, 0, 0]
             translation_vector[axis_dict[axis]] = 0.1
             self.structure.translate_sites(
                 indices=range(len(self)),
@@ -1110,20 +1113,134 @@ class OgStructure:
             )
             # Enlarge the lattice along fracture axis
             extra_length = 1.3
-            lattice_scales = [1,1,1]
+            lattice_scales = [1, 1, 1]
             lattice_scales[axis_dict[axis]] = extra_length
             self.scale_lattice_only(lattice_scales)
 
             # Next, identify the end points
             positions = self.structure.cart_coords
-            left_atoms_indices = np.where(positions[:, axis_dict[axis]] < 3)[0].tolist()
+            left_atoms_indices = np.where(positions[:, axis_dict[axis]] < freeze_size)[
+                0
+            ].tolist()
             right_atoms_indices = np.where(
-                positions[:, axis_dict[axis]] > (length - 3)
+                positions[:, axis_dict[axis]] > (length - freeze_size)
             )[0].tolist()
+            print(
+                "og:Fracture calculations: freezing atoms",
+                left_atoms_indices,
+                right_atoms_indices,
+            )
+            for i in range(steps):
+                # Translate the right endpoint
+                p = self.structure.cart_coords
+                p[:, axis_dict[axis]] *= (delta + original_length) / original_length
+                self.set_positions(p)
+                # Finally, relax
+                self.relax(
+                    relax_cell=False,
+                    model=model,
+                    fix_atoms_indices=left_atoms_indices + right_atoms_indices,
+                )
+                if write_intermediate:
+                    self.structure.to(
+                        intermediates_folder + "/" + fn + "_" + str(i) + ".cif"
+                    )
+        elif method == "opt_pulling":
+            """
+            The structure is placed in a larger lattice. The terminal atoms are translated and then frozen.
+            Left terminal atoms: freeze.
+            Right terminal atoms: move then freeze.
+            Terminal atoms selected are within `freeze_size` Angstroms from the lattice edge.
+            """
+            print(
+                "og:Creating a fracture by pulling an endpoint while fixing the other"
+            )
+            target_length = strain * original_length
+            length = original_length
+            delta = translation_step
+            delta *= -1 if strain < 1 else 1
+            steps = abs(int((original_length - target_length) / delta))
+            print("og:Number of relaxations:", steps)
+            # First, make sure there are no atoms at the zero position. Otherwise, this will lead to trouble when extending the lattice length along the `axis` direction.
+            translation_vector = [0, 0, 0]
+            translation_vector[axis_dict[axis]] = 0.1
+            self.structure.translate_sites(
+                indices=range(len(self)),
+                vector=translation_vector,
+                frac_coords=False,
+            )
+            # Enlarge the lattice along fracture axis
+            extra_length = 1.3
+            lattice_scales = [1, 1, 1]
+            lattice_scales[axis_dict[axis]] = extra_length
+            self.scale_lattice_only(lattice_scales)
 
-            print('og:Fracture calculations: freezing atoms',left_atoms_indices,right_atoms_indices)
+            # Next, identify the end points
+            positions = self.structure.cart_coords
+            left_atoms_indices = np.where(positions[:, axis_dict[axis]] < freeze_size)[
+                0
+            ].tolist()
+            right_atoms_indices = np.where(
+                positions[:, axis_dict[axis]] > (length - freeze_size)
+            )[0].tolist()
+            if freeze_method == "sample":
+                right_atoms_indices = random.sample(
+                    right_atoms_indices, int(len(right_atoms_indices) / 2)
+                )
+                left_atoms_indices = random.sample(
+                    left_atoms_indices, int(len(left_atoms_indices) / 2)
+                )
+            if freeze_method == "distribution":
+                left_atoms_indices = np.where(
+                    positions[:, axis_dict[axis]] < freeze_size / 4
+                )[0].tolist()
+                right_atoms_indices = np.where(
+                    positions[:, axis_dict[axis]] > (length - freeze_size / 4)
+                )[0].tolist()
 
-            translation_vector=[0,0,0]
+                tl = np.where(
+                    (positions[:, axis_dict[axis]] < freeze_size / 2)
+                    & (positions[:, axis_dict[axis]] > freeze_size / 4)
+                )[0].tolist()
+                tr = np.where(
+                    (positions[:, axis_dict[axis]] < (length - freeze_size / 4))
+                    & (positions[:, axis_dict[axis]] > (length - freeze_size / 2))
+                )[0].tolist()
+
+                left_atoms_indices += random.sample(tl, int(len(tl) / 2))
+                right_atoms_indices += random.sample(tr, int(len(tr) / 2))
+
+                tl = np.where(
+                    (positions[:, axis_dict[axis]] < 3 * freeze_size / 4)
+                    & (positions[:, axis_dict[axis]] > freeze_size / 2)
+                )[0].tolist()
+                tr = np.where(
+                    (positions[:, axis_dict[axis]] < (length - freeze_size / 2))
+                    & (positions[:, axis_dict[axis]] > (length - 3 * freeze_size / 4))
+                )[0].tolist()
+
+                left_atoms_indices += random.sample(tl, int(len(tl) / 4))
+                right_atoms_indices += random.sample(tr, int(len(tr) / 4))
+
+                tl = np.where(
+                    (positions[:, axis_dict[axis]] < 4 * freeze_size / 4)
+                    & (positions[:, axis_dict[axis]] > 3 * freeze_size / 4)
+                )[0].tolist()
+                tr = np.where(
+                    (positions[:, axis_dict[axis]] < (length - 3 * freeze_size / 4))
+                    & (positions[:, axis_dict[axis]] > (length - 4 * freeze_size / 4))
+                )[0].tolist()
+
+                left_atoms_indices += random.sample(tl, int(len(tl) / 8))
+                right_atoms_indices += random.sample(tr, int(len(tr) / 8))
+
+            print(
+                "og:Fracture calculations: freezing atoms",
+                left_atoms_indices,
+                right_atoms_indices,
+            )
+
+            translation_vector = [0, 0, 0]
             translation_vector[axis_dict[axis]] = delta
 
             for i in range(steps):
@@ -1141,31 +1258,28 @@ class OgStructure:
                 )
                 if write_intermediate:
                     self.structure.to(
-                        intermediates_folder
-                        + "/"
-                        + fn
-                        + "_"
-                        + str(i)
-                        + ".cif"
+                        intermediates_folder + "/" + fn + "_" + str(i) + ".cif"
                     )
         elif method == "md_pulling":
-            raise Exception('Fracture method not supported yet!')
-            print("og:Creating a fracture by pulling an endpoint using an external force, and fixing the other end")
+            raise Exception("Fracture method not supported yet!")
+            print(
+                "og:Creating a fracture by pulling an endpoint using an external force, and fixing the other end"
+            )
             """
             The structure is placed in a larger lattice. The terminal atoms are translated and then frozen.
             Left terminal atoms: freeze.
             Right terminal atoms: move via external force.
             Terminal atoms selected are within 3 Angstroms from the lattice edge.
             """
-            
+
             target_length = strain * original_length
             length = original_length
             force = 1
             delta *= -1 if strain < 1 else 1
             steps = abs(int((original_length - target_length) / delta))
-            print("og:Number of relaxations:",steps)
+            print("og:Number of relaxations:", steps)
             # First, make sure there are no atoms at the zero position. Otherwise, this will lead to trouble when extending the lattice length along the `axis` direction.
-            translation_vector=[0,0,0]
+            translation_vector = [0, 0, 0]
             translation_vector[axis_dict[axis]] = 0.1
             self.structure.translate_sites(
                 indices=range(len(self)),
@@ -1174,7 +1288,7 @@ class OgStructure:
             )
             # Enlarge the lattice along fracture axis
             extra_length = 1.3
-            lattice_scales = [1,1,1]
+            lattice_scales = [1, 1, 1]
             lattice_scales[axis_dict[axis]] = extra_length
             self.scale_lattice_only(lattice_scales)
 
@@ -1185,9 +1299,13 @@ class OgStructure:
                 positions[:, axis_dict[axis]] > (length - 3)
             )[0].tolist()
 
-            print('og:Fracture calculations: freezing atoms',left_atoms_indices,right_atoms_indices)
+            print(
+                "og:Fracture calculations: freezing atoms",
+                left_atoms_indices,
+                right_atoms_indices,
+            )
 
-            force_vector=[0,0,0]
+            force_vector = [0, 0, 0]
             force_vector[axis_dict[axis]] = force
             self.simulate()
             for i in range(steps):
@@ -1205,15 +1323,10 @@ class OgStructure:
                 )
                 if write_intermediate:
                     self.structure.to(
-                        intermediates_folder
-                        + "/"
-                        + fn
-                        + "_"
-                        + str(i)
-                        + ".cif"
+                        intermediates_folder + "/" + fn + "_" + str(i) + ".cif"
                     )
         else:
-            raise Exception('Fracture method not supported yet!')
+            raise Exception("Fracture method not supported yet!")
         return self
 
     def create_helix(self, length, amplitude):

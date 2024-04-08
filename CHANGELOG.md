@@ -1,6 +1,11 @@
 ## Changelog
 
 
+### 0.1.39 - 2024-04-08
+
+* Added sampling of frozen atoms to the fracture() method
+* Added "opt_pulling_expansion" approach for the fracture() method
+
 ### 0.1.38 - 2024-03-28
 
 * Added the fracture() method
