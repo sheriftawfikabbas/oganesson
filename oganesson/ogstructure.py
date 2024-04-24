@@ -7,6 +7,7 @@ from typing import List, Optional, Tuple, Union
 from numpy.typing import ArrayLike
 import random
 import uuid
+import time
 
 import matplotlib.pyplot as plt
 from ase import Atoms, Atom
@@ -454,6 +455,7 @@ class OgStructure:
         fmax=0.05,
         verbose=True,
         fix_atoms_indices=None,
+        measure_time=False
     ):
         print("og:Loading PES model:", model)
         this_dir = os.path.abspath(os.path.dirname(__file__))
@@ -473,10 +475,15 @@ class OgStructure:
         if fix_atoms_indices is not None:
             c = FixAtoms(indices=fix_atoms_indices)
             atoms.set_constraint(c)
-
+        start = time.time()
         relax_results = relaxer.relax(atoms, verbose=verbose, steps=steps, fmax=fmax)
+        end = time.time()
         self.structure = relax_results["final_structure"]
         self.total_energy = relax_results["trajectory"].energies[-1]
+        self.trajectory = relax_results["trajectory"]
+        self.relaxation_time = end-start
+
+        return self
 
     def generate_neb(
         self,

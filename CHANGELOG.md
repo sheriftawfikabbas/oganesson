@@ -1,6 +1,10 @@
 ## Changelog
 
 
+### 0.1.40 - 2024-04-08
+
+* Fix for relax() in OgStructure
+
 ### 0.1.39 - 2024-04-08
 
 * Added sampling of frozen atoms to the fracture() method
