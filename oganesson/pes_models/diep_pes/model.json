@@ -1,13 +1,13 @@
 {
     "@class": "Potential",
     "@module": "matgl.apps.pes",
-    "@model_version": 1,
+    "@model_version": 2,
     "metadata": null,
     "kwargs": {
         "model": {
             "@class": "M3GNet",
             "@module": "matgl.models._m3gnet",
-            "@model_version": 1,
+            "@model_version": 2,
             "init_args": {
                 "element_types": [
                     "H",

@@ -455,7 +455,7 @@ class OgStructure:
         fmax=0.05,
         verbose=True,
         fix_atoms_indices=None,
-        measure_time=False
+        measure_time=False,
     ):
         print("og:Loading PES model:", model)
         this_dir = os.path.abspath(os.path.dirname(__file__))
@@ -481,7 +481,7 @@ class OgStructure:
         self.structure = relax_results["final_structure"]
         self.total_energy = relax_results["trajectory"].energies[-1]
         self.trajectory = relax_results["trajectory"]
-        self.relaxation_time = end-start
+        self.relaxation_time = end - start
 
         return self
 
@@ -879,7 +879,7 @@ class OgStructure:
         )
         return self
 
-    def set_positions(self,positions, is_cartesian=True):
+    def set_positions(self, positions, is_cartesian=True):
         self.structure = Structure(
             lattice=self.structure.lattice,
             species=self.structure.species,
@@ -1085,14 +1085,19 @@ class OgStructure:
                 "og:Creating a fracture by homogeneous lattice expansion, by optimizing the structure at every step."
             )
             for step in range(steps):
-                scale_vector = [0,0,0]
+                scale_vector = [0, 0, 0]
                 scale_vector[axis_dict[axis]] = strain_per_step
                 self.scale(scale_vector)
 
                 self.relax(relax_cell=False, model=model)
                 if write_intermediate:
                     self.structure.to(
-                        intermediates_folder + "/" + fn + "_expansionstep_" + str(step) + ".cif"
+                        intermediates_folder
+                        + "/"
+                        + fn
+                        + "_expansionstep_"
+                        + str(step)
+                        + ".cif"
                     )
         elif method == "opt_pulling_expansion":
             """
@@ -1522,3 +1527,33 @@ class OgStructure:
             n = self.get_atom_count(charge_carrier)
         M_w = self.calculate_molecular_mass() / 1000
         return n * F / (3600 * M_w)
+
+    def commensurate(self, structure: Structure, MAX=10, error=1):
+        """
+        Generates a new structure that is commensurate with the x-y lattice plane of both `self` and `structure`.
+        Both lattices must be cubic.
+        """
+        a1 = self.structure.lattice.a
+        b1 = self.structure.lattice.b
+        a2 = structure.lattice.a
+        b2 = structure.lattice.b
+
+        for i_a1 in range(1, MAX):
+            for i_b1 in range(1, MAX):
+                for i_a2 in range(1, MAX):
+                    for i_b2 in range(1, MAX):
+                        if (
+                            abs(i_a1 * a1 - i_a2 * a2) / (i_a1 * a1) * 100 < error
+                            and abs(i_b1 * b1 - i_b2 * b2) / (i_b1 * b1) * 100 < error
+                        ):
+                            current_structure = self.structure.copy()
+                            current_structure = current_structure.make_supercell(
+                                [i_a1, i_b1, 1]
+                            )
+                            structure = structure.make_supercell([i_a2, i_b2, 1])
+
+                            cell1 = current_structure.to_ase_atoms()
+                            cell2 = structure.to_ase_atoms()
+                            cell2.positions[:,2]+=cell1.cell.cellpar()[2]
+                            cell1 += cell2
+                            return OgStructure(cell1),OgStructure(cell2)
