@@ -1067,6 +1067,7 @@ class OgStructure:
         ] = "opt_pulling_expansion",
         freeze_size=3,
         freeze_method: Union["sample", "all", "distribution"] = "all",
+        fmax=0.05
     ):
         axis_dict = {"x": 0, "y": 1, "z": 2}
         if axis == "x":
@@ -1089,7 +1090,7 @@ class OgStructure:
                 scale_vector[axis_dict[axis]] = strain_per_step
                 self.scale(scale_vector)
 
-                self.relax(relax_cell=False, model=model)
+                self.relax(relax_cell=False, model=model,fmax=fmax)
                 if write_intermediate:
                     self.structure.to(
                         intermediates_folder
@@ -1151,7 +1152,7 @@ class OgStructure:
                 self.relax(
                     relax_cell=False,
                     model=model,
-                    fix_atoms_indices=left_atoms_indices + right_atoms_indices,
+                    fix_atoms_indices=left_atoms_indices + right_atoms_indices,fmax=fmax
                 )
                 if write_intermediate:
                     self.structure.to(
@@ -1266,7 +1267,7 @@ class OgStructure:
                 self.relax(
                     relax_cell=False,
                     model=model,
-                    fix_atoms_indices=left_atoms_indices + right_atoms_indices,
+                    fix_atoms_indices=left_atoms_indices + right_atoms_indices,fmax=fmax,
                 )
                 if write_intermediate:
                     self.structure.to(
@@ -1331,7 +1332,7 @@ class OgStructure:
                 self.relax(
                     relax_cell=False,
                     model=model,
-                    fix_atoms_indices=left_atoms_indices + right_atoms_indices,
+                    fix_atoms_indices=left_atoms_indices + right_atoms_indices,fmax=fmax,
                 )
                 if write_intermediate:
                     self.structure.to(
@@ -1537,7 +1538,8 @@ class OgStructure:
         b1 = self.structure.lattice.b
         a2 = structure.lattice.a
         b2 = structure.lattice.b
-
+        comms = []
+        comms_pair = []
         for i_a1 in range(1, MAX):
             for i_b1 in range(1, MAX):
                 for i_a2 in range(1, MAX):
@@ -1554,6 +1556,36 @@ class OgStructure:
 
                             cell1 = current_structure.to_ase_atoms()
                             cell2 = structure.to_ase_atoms()
-                            cell2.positions[:,2]+=cell1.cell.cellpar()[2]
-                            cell1 += cell2
-                            return OgStructure(cell1),OgStructure(cell2)
+                            # Scale cell2 to a and b lattice constants of cell1
+                            Atoms.set_cell
+                            cell2.set_cell([cell1.cell.cellpar()[0],cell1.cell.cellpar()[1],cell2.cell.cellpar()[2]],scale_atoms=True)
+                            # Shift z-axis positions of atoms in cell2
+                            cell2.positions[:, 2] += cell1.cell.cellpar()[2]
+
+                            p1 = cell1.positions
+                            p2 = cell2.positions
+                            p = np.append(p1, p2, axis=0)
+                            print(cell1.cell, cell2.cell)
+                            numbers = np.append(cell1.numbers, cell2.numbers)
+                            comm = Atoms(
+                                positions=p,
+                                cell=[
+                                    cell1.cell.cellpar()[0],
+                                    cell1.cell.cellpar()[1],
+                                    cell1.cell.cellpar()[2] + cell2.cell.cellpar()[2],
+                                ],
+                                pbc=True,
+                                numbers=numbers,
+                            )
+                            comms += [comm]
+                            comms_pair += [[cell1, cell2]]
+
+        if len(comms) > 0:
+            index_min = min(range(len(comms)), key=comms.__getitem__)
+            return (
+                OgStructure(comms[index_min]),
+                OgStructure(comms_pair[index_min][0]),
+                OgStructure(comms_pair[index_min][1]),
+            )
+        else:
+            return None, None, None
