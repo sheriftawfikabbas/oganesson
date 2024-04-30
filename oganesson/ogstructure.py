@@ -51,7 +51,7 @@ class OgStructure:
             if isinstance(structure, OgStructure):
                 self = structure
             if isinstance(structure, str):
-                parser = CifParser.from_string(structure)
+                parser = CifParser.from_str(structure)
                 structure = parser.get_structures()
                 self.structure = structure[0]
             elif isinstance(structure, Atoms):
