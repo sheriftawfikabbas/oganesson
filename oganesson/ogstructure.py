@@ -1535,108 +1535,89 @@ class OgStructure:
         M_w = self.calculate_molecular_mass() / 1000
         return n * F / (3600 * M_w)
 
-    def commensurate(self, structure: Structure, MAX=10, error=1, vacuum=3):
+    def commensurate(self, structures: List[Structure], MAX=10, error=1, vacuum=10):
         """
         Generates a new structure that is commensurate with the x-y lattice plane of both `self` and `structure`.
         Both lattices must be cubic.
         """
         a1 = self.structure.lattice.a
         b1 = self.structure.lattice.b
-        a2 = structure.lattice.a
-        b2 = structure.lattice.b
-        comms = []
-        comms_pair = []
-        for i_a1 in range(1, MAX):
-            for i_b1 in range(1, MAX):
+        if len(structures) == 1:
+            structure = structures[0]
+            a2 = structure.lattice.a
+            b2 = structure.lattice.b
+            comms = []
+            comms_pair = []
+            for i_a1 in range(1, MAX):
                 for i_a2 in range(1, MAX):
-                    for i_b2 in range(1, MAX):
-                        if (
-                            abs(i_a1 * a1 - i_a2 * a2) / (i_a1 * a1) * 100 < error
-                            and abs(i_b1 * b1 - i_b2 * b2) / (i_b1 * b1) * 100 < error
-                        ):
-                            current_structure = self.structure.copy()
-                            current_structure = current_structure.make_supercell(
-                                [i_a1, i_b1, 1]
-                            )
-                            structure = structure.make_supercell([i_a2, i_b2, 1])
 
-                            cell1 = current_structure.to_ase_atoms()
-                            cell2 = structure.to_ase_atoms()
-                            # Scale cell2 to a and b lattice constants of cell1
-                            Atoms.set_cell
-                            cell2.set_cell(
-                                [
-                                    cell1.cell.cellpar()[0],
-                                    cell1.cell.cellpar()[1],
-                                    cell2.cell.cellpar()[2],
-                                ],
-                                scale_atoms=True,
-                            )
+                    for i_b1 in range(1, MAX):
 
-                            # # Apply the vacuum
-                            # p1 = cell1.positions
-                            # p2 = cell2.positions
-                            # cell1_z = p1[:, 2].max() - p1[:, 2].min() + vacuum
-                            # cell2_z = p2[:, 2].max() - p2[:, 2].min() + vacuum
+                        for i_b2 in range(1, MAX):
+                            if (
+                                abs(i_a1 * a1 - i_a2 * a2) / (i_a1 * a1) * 100 < error
+                                and abs(i_b1 * b1 - i_b2 * b2) / (i_b1 * b1) * 100
+                                < error
+                            ):
+                                current_structure = self.structure.copy()
+                                current_structure = current_structure.make_supercell(
+                                    [i_a1, i_b1, 1]
+                                )
+                                structure = structure.make_supercell([i_a2, i_b2, 1])
 
-                            # cell1 = Atoms(
-                            #     cell=[
-                            #         cell1.cell.cellpar()[0],
-                            #         cell1.cell.cellpar()[1],
-                            #         cell1_z,
-                            #     ],
-                            #     positions=p1,
-                            #     pbc=True,
-                            #     numbers=cell1.numbers,
-                            # )
-                            # cell2 = Atoms(
-                            #     cell=[
-                            #         cell2.cell.cellpar()[0],
-                            #         cell2.cell.cellpar()[1],
-                            #         cell2_z,
-                            #     ],
-                            #     positions=p2,
-                            #     pbc=True,
-                            #     numbers=cell2.numbers,
-                            # )
+                                cell1 = current_structure.to_ase_atoms()
+                                cell2 = structure.to_ase_atoms()
+                                # Scale cell2 to a and b lattice constants of cell1
+                                Atoms.set_cell
+                                cell2.set_cell(
+                                    [
+                                        cell1.cell.cellpar()[0],
+                                        cell1.cell.cellpar()[1],
+                                        cell2.cell.cellpar()[2],
+                                    ],
+                                    scale_atoms=True,
+                                )
 
-                            # Shift z-axis positions of atoms in cell2
-                            cell2.positions[:, 2] += cell1.cell.cellpar()[2]
+                                cell2.positions[:, 2] += cell1.cell.cellpar()[2]
 
-                            p1 = cell1.positions
-                            p2 = cell2.positions
-                            p = np.append(p1, p2, axis=0)
-                            print(cell1.cell, cell2.cell)
-                            numbers = np.append(cell1.numbers, cell2.numbers)
-                            comm = Atoms(
-                                positions=p,
-                                cell=[
-                                    cell1.cell.cellpar()[0],
-                                    cell1.cell.cellpar()[1],
-                                    cell1.cell.cellpar()[2] + cell2.cell.cellpar()[2],
-                                ],
-                                pbc=True,
-                                numbers=numbers,
-                            )
-                            return (
-                                OgStructure(comm),
-                                OgStructure(cell1),
-                                OgStructure(cell2),
-                            )
-        #                     comms += [comm]
-        #                     comms_pair += [[cell1, cell2]]
+                                p1 = cell1.positions
+                                p2 = cell2.positions
+                                p = np.append(p1, p2, axis=0)
+                                print(cell1.cell, cell2.cell)
+                                numbers = np.append(cell1.numbers, cell2.numbers)
+                                comm = Atoms(
+                                    positions=p,
+                                    cell=[
+                                        cell1.cell.cellpar()[0],
+                                        cell1.cell.cellpar()[1],
+                                        cell1.cell.cellpar()[2]
+                                        + cell2.cell.cellpar()[2]
+                                        + vacuum,
+                                    ],
+                                    pbc=True,
+                                    numbers=numbers,
+                                )
+                                return (
+                                    OgStructure(comm),
+                                    OgStructure(cell1),
+                                    OgStructure(cell2),
+                                )
+            #                     comms += [comm]
+            #                     comms_pair += [[cell1, cell2]]
 
-        # if len(comms) > 0:
-        #     min_index = 0
-        #     min_size = len(comms[min_index])
-        #     for i in range(len(comms)):
-        #         if len(comms[i]) < min_size:
-        #             min_index = i
-        #             min_size = len(comms[i])
-        #     return (
-        #         OgStructure(comms[min_index]),
-        #         OgStructure(comms_pair[min_index][0]),
-        #         OgStructure(comms_pair[min_index][1]),
-        #     )
-        # else:
-        return None, None, None
+            # if len(comms) > 0:
+            #     min_index = 0
+            #     min_size = len(comms[min_index])
+            #     for i in range(len(comms)):
+            #         if len(comms[i]) < min_size:
+            #             min_index = i
+            #             min_size = len(comms[i])
+            #     return (
+            #         OgStructure(comms[min_index]),
+            #         OgStructure(comms_pair[min_index][0]),
+            #         OgStructure(comms_pair[min_index][1]),
+            #     )
+            # else:
+            return None, None, None
+        elif len(structures) == 2:
+            raise Exception("Not implemented yet.")
