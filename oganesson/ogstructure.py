@@ -31,6 +31,7 @@ from oganesson.utilities.constants import F
 from oganesson.utilities.bonds_dictionary import bonds_dictionary
 from oganesson.utilities import atomic_data
 from ase.constraints import FixAtoms, ExternalForce
+from ase import units
 
 
 class OgStructure:
@@ -584,6 +585,7 @@ class OgStructure:
         loginterval=1000,
         folder_tag=None,
         model="diep",
+        pressure=1.01325 * units.bar,
     ):
         this_dir = os.path.abspath(os.path.dirname(__file__))
         if model == "m3gnet":
@@ -618,6 +620,7 @@ class OgStructure:
             ensemble=ensemble,
             trajectory=self.trajectory_file,
             logfile=self.log_file,
+            pressure=pressure,
             loginterval=loginterval,
         )
         md.run(steps=steps)
@@ -1067,7 +1070,7 @@ class OgStructure:
         ] = "opt_pulling_expansion",
         freeze_size=3,
         freeze_method: Union["sample", "all", "distribution"] = "all",
-        fmax=0.05
+        fmax=0.05,
     ):
         axis_dict = {"x": 0, "y": 1, "z": 2}
         if axis == "x":
@@ -1090,7 +1093,7 @@ class OgStructure:
                 scale_vector[axis_dict[axis]] = strain_per_step
                 self.scale(scale_vector)
 
-                self.relax(relax_cell=False, model=model,fmax=fmax)
+                self.relax(relax_cell=False, model=model, fmax=fmax)
                 if write_intermediate:
                     self.structure.to(
                         intermediates_folder
@@ -1152,7 +1155,8 @@ class OgStructure:
                 self.relax(
                     relax_cell=False,
                     model=model,
-                    fix_atoms_indices=left_atoms_indices + right_atoms_indices,fmax=fmax
+                    fix_atoms_indices=left_atoms_indices + right_atoms_indices,
+                    fmax=fmax,
                 )
                 if write_intermediate:
                     self.structure.to(
@@ -1267,7 +1271,8 @@ class OgStructure:
                 self.relax(
                     relax_cell=False,
                     model=model,
-                    fix_atoms_indices=left_atoms_indices + right_atoms_indices,fmax=fmax,
+                    fix_atoms_indices=left_atoms_indices + right_atoms_indices,
+                    fmax=fmax,
                 )
                 if write_intermediate:
                     self.structure.to(
@@ -1332,7 +1337,8 @@ class OgStructure:
                 self.relax(
                     relax_cell=False,
                     model=model,
-                    fix_atoms_indices=left_atoms_indices + right_atoms_indices,fmax=fmax,
+                    fix_atoms_indices=left_atoms_indices + right_atoms_indices,
+                    fmax=fmax,
                 )
                 if write_intermediate:
                     self.structure.to(
@@ -1529,7 +1535,7 @@ class OgStructure:
         M_w = self.calculate_molecular_mass() / 1000
         return n * F / (3600 * M_w)
 
-    def commensurate(self, structure: Structure, MAX=10, error=1):
+    def commensurate(self, structure: Structure, MAX=10, error=1, vacuum=3):
         """
         Generates a new structure that is commensurate with the x-y lattice plane of both `self` and `structure`.
         Both lattices must be cubic.
@@ -1558,7 +1564,42 @@ class OgStructure:
                             cell2 = structure.to_ase_atoms()
                             # Scale cell2 to a and b lattice constants of cell1
                             Atoms.set_cell
-                            cell2.set_cell([cell1.cell.cellpar()[0],cell1.cell.cellpar()[1],cell2.cell.cellpar()[2]],scale_atoms=True)
+                            cell2.set_cell(
+                                [
+                                    cell1.cell.cellpar()[0],
+                                    cell1.cell.cellpar()[1],
+                                    cell2.cell.cellpar()[2],
+                                ],
+                                scale_atoms=True,
+                            )
+
+                            # # Apply the vacuum
+                            # p1 = cell1.positions
+                            # p2 = cell2.positions
+                            # cell1_z = p1[:, 2].max() - p1[:, 2].min() + vacuum
+                            # cell2_z = p2[:, 2].max() - p2[:, 2].min() + vacuum
+
+                            # cell1 = Atoms(
+                            #     cell=[
+                            #         cell1.cell.cellpar()[0],
+                            #         cell1.cell.cellpar()[1],
+                            #         cell1_z,
+                            #     ],
+                            #     positions=p1,
+                            #     pbc=True,
+                            #     numbers=cell1.numbers,
+                            # )
+                            # cell2 = Atoms(
+                            #     cell=[
+                            #         cell2.cell.cellpar()[0],
+                            #         cell2.cell.cellpar()[1],
+                            #         cell2_z,
+                            #     ],
+                            #     positions=p2,
+                            #     pbc=True,
+                            #     numbers=cell2.numbers,
+                            # )
+
                             # Shift z-axis positions of atoms in cell2
                             cell2.positions[:, 2] += cell1.cell.cellpar()[2]
 
@@ -1577,15 +1618,25 @@ class OgStructure:
                                 pbc=True,
                                 numbers=numbers,
                             )
-                            comms += [comm]
-                            comms_pair += [[cell1, cell2]]
+                            return (
+                                OgStructure(comm),
+                                OgStructure(cell1),
+                                OgStructure(cell2),
+                            )
+        #                     comms += [comm]
+        #                     comms_pair += [[cell1, cell2]]
 
-        if len(comms) > 0:
-            index_min = min(range(len(comms)), key=comms.__getitem__)
-            return (
-                OgStructure(comms[index_min]),
-                OgStructure(comms_pair[index_min][0]),
-                OgStructure(comms_pair[index_min][1]),
-            )
-        else:
-            return None, None, None
+        # if len(comms) > 0:
+        #     min_index = 0
+        #     min_size = len(comms[min_index])
+        #     for i in range(len(comms)):
+        #         if len(comms[i]) < min_size:
+        #             min_index = i
+        #             min_size = len(comms[i])
+        #     return (
+        #         OgStructure(comms[min_index]),
+        #         OgStructure(comms_pair[min_index][0]),
+        #         OgStructure(comms_pair[min_index][1]),
+        #     )
+        # else:
+        return None, None, None

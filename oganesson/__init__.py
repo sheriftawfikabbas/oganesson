@@ -1,4 +1,4 @@
-import imp
+import importlib as imp
 from oganesson.ogai import OgAI
 from oganesson.descriptors import BACD
 from oganesson.descriptors import SymmetryFunctions
@@ -12,15 +12,14 @@ __all__ = ["OgAI",
            "GA"]
 
 try:
-    imp.find_module('gpaw')
+    imp.util.find_spec('gpaw')
     from oganesson.descriptors import ROSA
     __all__ += ["ROSA"]
 except ImportError:
     pass
 
-
 try:
-    imp.find_module('dscribe')
+    imp.util.find_spec('dscribe')
     from oganesson.descriptors import DScribeACSF, DScribeSOAP, DScribeCoulombMatrix, DScribeEwaldSumMatrix, DScribeSineMatrix
     __all__ += ["DScribeACSF",
                 "DScribeSOAP",

@@ -1,4 +1,4 @@
-import imp
+import importlib as imp
 from enum import Enum
 from ase import Atoms
 from pymatgen.core import Structure
@@ -12,14 +12,14 @@ BACD = _BACD
 SymmetryFunctions = _SymmetryFunctions
 
 try:
-    imp.find_module('gpaw')
+    imp.util.find_spec('gpaw')
     from oganesson.descriptors.rosa import _ROSA
     ROSA = _ROSA
 except ImportError:
     print('GPAW is not installed, and therefore you cannot use the ROSA descriptors.')
 
 try:
-    imp.find_module('dscribe')
+    imp.util.find_spec('dscribe')
     from oganesson.descriptors.dscribe import _DScribeACSF, _DScribeSOAP, _DScribeCoulombMatrix, _DScribeEwaldSumMatrix, _DScribeSineMatrix
     DscribeACSF = _DScribeACSF
     DScribeSOAP = _DScribeSOAP

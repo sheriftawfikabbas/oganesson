@@ -1,6 +1,10 @@
 ## Changelog
 
 
+### 0.1.41 - 2024-04-30
+
+* From imp to importlib because imp is deprecated in python 3.12
+
 ### 0.1.40 - 2024-04-08
 
 * Fix for relax() in OgStructure
