@@ -32,6 +32,8 @@ from oganesson.utilities.bonds_dictionary import bonds_dictionary
 from oganesson.utilities import atomic_data
 from ase.constraints import FixAtoms, ExternalForce
 from ase import units
+import torch
+import torch.nn as nn
 
 
 class OgStructure:
@@ -471,6 +473,9 @@ class OgStructure:
             potential = matgl.load_model(model)
             print("og:Loaded PES model:", model)
             potential.calc_stresses = True
+        if torch.cuda.device_count() > 1:
+            print("og:Potential model will use", torch.cuda.device_count(), "GPU cores.")
+            model = nn.DataParallel(model)
         relaxer = Relaxer(potential=potential, relax_cell=relax_cell)
         atoms = self.pymatgen_to_ase(self.structure)
         if fix_atoms_indices is not None:
@@ -586,6 +591,7 @@ class OgStructure:
         folder_tag=None,
         model="diep",
         pressure=1.01325 * units.bar,
+        fix_atoms_indices=None,
     ):
         this_dir = os.path.abspath(os.path.dirname(__file__))
         if model == "m3gnet":
@@ -611,16 +617,21 @@ class OgStructure:
         self.trajectory_file = (
             "og_lab/" + self.folder_tag + "/" + str(temperature) + ".traj"
         )
+        atoms = self.to_ase()
+        if fix_atoms_indices:
+            c = FixAtoms(indices=fix_atoms_indices)
+            atoms.set_constraint(c)
         self.log_file = "og_lab/" + self.folder_tag + "/" + str(temperature) + ".log"
         md = MolecularDynamics(
             potential=potential,
-            atoms=self.to_ase(),
+            atoms=atoms,
             temperature=temperature,
             timestep=timestep,
             ensemble=ensemble,
             trajectory=self.trajectory_file,
             logfile=self.log_file,
             pressure=pressure,
+            external_stress=pressure,
             loginterval=loginterval,
         )
         md.run(steps=steps)
@@ -1071,6 +1082,7 @@ class OgStructure:
         freeze_size=3,
         freeze_method: Union["sample", "all", "distribution"] = "all",
         fmax=0.05,
+        relaxation_steps=1000
     ):
         axis_dict = {"x": 0, "y": 1, "z": 2}
         if axis == "x":
@@ -1093,7 +1105,7 @@ class OgStructure:
                 scale_vector[axis_dict[axis]] = strain_per_step
                 self.scale(scale_vector)
 
-                self.relax(relax_cell=False, model=model, fmax=fmax)
+                self.relax(relax_cell=False, model=model, fmax=fmax, steps=relaxation_steps)
                 if write_intermediate:
                     self.structure.to(
                         intermediates_folder
@@ -1156,7 +1168,7 @@ class OgStructure:
                     relax_cell=False,
                     model=model,
                     fix_atoms_indices=left_atoms_indices + right_atoms_indices,
-                    fmax=fmax,
+                    fmax=fmax, steps=relaxation_steps
                 )
                 if write_intermediate:
                     self.structure.to(
@@ -1272,7 +1284,7 @@ class OgStructure:
                     relax_cell=False,
                     model=model,
                     fix_atoms_indices=left_atoms_indices + right_atoms_indices,
-                    fmax=fmax,
+                    fmax=fmax, steps=relaxation_steps
                 )
                 if write_intermediate:
                     self.structure.to(
