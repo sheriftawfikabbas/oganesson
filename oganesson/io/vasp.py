@@ -2,6 +2,8 @@ from pymatgen.core import Structure
 from oganesson.ogstructure import OgStructure
 from pymatgen.io.vasp import Poscar as MPPoscar
 import numpy as np
+from ase import Atoms
+from ase.cell import Cell
 
 
 class Poscar:
@@ -186,6 +188,94 @@ class Outcar:
         return forces.max()
 
 
+def string_to_ase(poscar_str, convert=1):
+    poscar = MPPoscar.from_str(poscar_str)
+    structure = poscar.structure
+    fc = structure.frac_coords
+    lattice = structure.lattice
+    cc = structure.cart_coords
+
+    a = Atoms(
+        scaled_positions=fc,
+        numbers=structure.atomic_numbers,
+        pbc=True,
+        cell=Cell.fromcellpar(
+            [
+                lattice.a * convert,
+                lattice.b * convert,
+                lattice.c * convert,
+                lattice.alpha,
+                lattice.beta,
+                lattice.gamma,
+            ]
+        ),
+    )
+
+    return a
+
+
+class Xdatcar:
+    def __init__(
+        self,
+        directory: str = "./",
+        filename: str = "XDATCAR",
+    ) -> None:
+        self.directory = directory
+        self.filename = filename
+        f = open(self.filename, "r")
+        traj = f.readlines()
+        f.close()
+
+        lattice_list = traj[0:7]
+        lattice_str = "".join(lattice_list)
+        atom_counts = [int(x) for x in traj[6].split()]
+        num_atoms = sum(atom_counts)
+        number_of_lines = num_atoms + 1
+        trajectory = traj[7:]
+        tot_num_images = int(len(trajectory) / number_of_lines)
+
+        print("file: ", self.filename, "total number of images:", str(tot_num_images))
+
+        trajectory_list = []
+        trajectory_list_ang = []
+        num_steps = int(len(trajectory) / number_of_lines)
+
+        list_of_added = []
+
+        initial = string_to_ase(
+            lattice_str + "".join(traj[7 : 7 + num_atoms + 1]), 1e-8
+        )
+        initial_ang = string_to_ase(lattice_str + "".join(traj[7 : 7 + num_atoms + 1]))
+
+        list_of_added = []
+        atomic_numbers = np.unique(initial.get_atomic_numbers())
+
+        for i in range(0, num_steps):
+            positions_str = "".join(
+                traj[7 + i * (num_atoms + 1) : 7 + (i + 1) * (num_atoms + 1)]
+            )
+            a = string_to_ase(lattice_str + positions_str, 1e-8)
+            a_ang = string_to_ase(lattice_str + positions_str)
+            trajectory_list += [a]
+            trajectory_list_ang += [a_ang]
+
+        self.trajectory = trajectory_list_ang
+
+    def get_trajectory(self):
+        return self.trajectory
+
+    def get_displacements(self):
+        """[site, time step, axis]"""
+        displacements = np.zeros([len(self.trajectory[0]),len(self.trajectory) - 1,  3])
+        t0 = self.trajectory[0]
+        print(t0)
+        for it in range(len(self.trajectory[1:])):
+            t = self.trajectory[it]
+            for isite in range(len(t)):
+                displacements[isite][it] = t.positions[isite] - t0.positions[isite]
+        return displacements
+
+
 def get_nelect(vasp_folder="./"):
     try:
         og = OgStructure(file_name=vasp_folder + "/POSCAR")
@@ -197,7 +287,7 @@ def get_nelect(vasp_folder="./"):
             )
         return nelect
     except Exception as e:
-        print("Problem processing VASP input files",e)
+        print("Problem processing VASP input files", e)
 
 
 def get_bandgap(vasp_folder="./"):
