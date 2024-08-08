@@ -1,6 +1,11 @@
 ## Changelog
 
 
+### 0.1.42 - 2024-08-08
+
+* New features in io.vasp
+* Added the phase_stability module
+
 ### 0.1.41 - 2024-04-30
 
 * From imp to importlib because imp is deprecated in python 3.12

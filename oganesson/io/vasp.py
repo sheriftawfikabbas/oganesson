@@ -67,12 +67,13 @@ class Outcar:
         return self._outcar_extractor()
 
     def write_md_data(self, file_name: str = None, path: str = None):
-        structures, forces_vectors, stress_matrices = self._outcar_extractor()
+        energies, structures, forces_vectors, stress_matrices = self._outcar_extractor()
         if file_name is None:
             file_name = self.outcar_file + ".json"
         if path is None:
             path = self.outcar_directory
         output = {
+            "energies": energies,
             "structures": structures,
             "forces": forces_vectors,
             "stresses": stress_matrices,
@@ -134,7 +135,8 @@ class Outcar:
                 atoms += ion_counts[i] * [ions[i]]
 
             number_of_atoms = sum(ion_counts)
-
+        energies_lines = [x for x in outcar if "free  energy   TOTEN" in x]
+        energies = [x.split()[4] for x in energies_lines]
         direct_lattice_vectors_positions = get_indices(outcar, "direct lattice vectors")
         positions_forces_vectors_positions = get_indices(
             outcar, "TOTAL-FORCE (eV/Angst)"
@@ -158,8 +160,20 @@ class Outcar:
                     coords_are_cartesian=True,
                 ).as_dict()
             ]
-
-        return structures, forces_vectors.tolist(), stress_matrices
+        length_of_least = min(
+            [
+                len(energies),
+                len(structures),
+                len(forces_vectors.tolist()),
+                len(stress_matrices),
+            ]
+        )
+        return (
+            energies[:length_of_least],
+            structures[:length_of_least],
+            forces_vectors.tolist()[:length_of_least],
+            stress_matrices[:length_of_least],
+        )
 
     def get_maximum_force(self):
         TAG = "TOTAL-FORCE (eV/Angst)"
@@ -266,7 +280,7 @@ class Xdatcar:
 
     def get_displacements(self):
         """[site, time step, axis]"""
-        displacements = np.zeros([len(self.trajectory[0]),len(self.trajectory) - 1,  3])
+        displacements = np.zeros([len(self.trajectory[0]), len(self.trajectory) - 1, 3])
         t0 = self.trajectory[0]
         print(t0)
         for it in range(len(self.trajectory[1:])):
