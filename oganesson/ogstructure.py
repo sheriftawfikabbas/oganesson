@@ -228,7 +228,7 @@ class OgStructure:
         return bond_data
 
     def translate(self, v):
-        self.structure.translate_sites(range(len(self)), v)
+        self.structure = self.structure.translate_sites(range(len(self)), v)
 
     def equivalent_sites(self, i, site):
         if (
@@ -474,7 +474,9 @@ class OgStructure:
             print("og:Loaded PES model:", model)
             potential.calc_stresses = True
         if torch.cuda.device_count() > 1:
-            print("og:Potential model will use", torch.cuda.device_count(), "GPU cores.")
+            print(
+                "og:Potential model will use", torch.cuda.device_count(), "GPU cores."
+            )
             model = nn.DataParallel(model)
         relaxer = Relaxer(potential=potential, relax_cell=relax_cell)
         atoms = self.pymatgen_to_ase(self.structure)
@@ -635,6 +637,8 @@ class OgStructure:
             loginterval=loginterval,
         )
         md.run(steps=steps)
+        self.trajectory = md.trajectory
+        self.structure = self.trajectory[-1]
 
     def calculate_diffusivity(
         self, calculation_type="tracer", axis="all", ignore_n_images=0
@@ -1082,7 +1086,7 @@ class OgStructure:
         freeze_size=3,
         freeze_method: Union["sample", "all", "distribution"] = "all",
         fmax=0.05,
-        relaxation_steps=1000
+        relaxation_steps=1000,
     ):
         axis_dict = {"x": 0, "y": 1, "z": 2}
         if axis == "x":
@@ -1105,7 +1109,9 @@ class OgStructure:
                 scale_vector[axis_dict[axis]] = strain_per_step
                 self.scale(scale_vector)
 
-                self.relax(relax_cell=False, model=model, fmax=fmax, steps=relaxation_steps)
+                self.relax(
+                    relax_cell=False, model=model, fmax=fmax, steps=relaxation_steps
+                )
                 if write_intermediate:
                     self.structure.to(
                         intermediates_folder
@@ -1168,7 +1174,8 @@ class OgStructure:
                     relax_cell=False,
                     model=model,
                     fix_atoms_indices=left_atoms_indices + right_atoms_indices,
-                    fmax=fmax, steps=relaxation_steps
+                    fmax=fmax,
+                    steps=relaxation_steps,
                 )
                 if write_intermediate:
                     self.structure.to(
@@ -1284,7 +1291,8 @@ class OgStructure:
                     relax_cell=False,
                     model=model,
                     fix_atoms_indices=left_atoms_indices + right_atoms_indices,
-                    fmax=fmax, steps=relaxation_steps
+                    fmax=fmax,
+                    steps=relaxation_steps,
                 )
                 if write_intermediate:
                     self.structure.to(
@@ -1520,7 +1528,7 @@ class OgStructure:
         return self
 
     def get_atom_count(self, atom: str):
-        an = np.where(np.array(atomic_data.labels) == atom)[0]
+        an = np.where(np.array(atomic_data.symbols) == atom)[0]
         c = np.array(self.structure.atomic_numbers)
         return len(c[c == an])
 

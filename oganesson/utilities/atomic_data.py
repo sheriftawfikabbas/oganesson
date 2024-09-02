@@ -34,7 +34,7 @@ d_groups_flat = [item for col in d_groups for item in col]
 all_groups = d_groups + p_groups + s_groups
 all_groups_no_REAs = d_groups_no_REAs + p_groups + s_groups
 
-labels =\
+symbols =\
     ["e", "H", "He",
      "Li", "Be", "B", "C", "N", "O", "F", "Ne",
      "Na", "Mg", "Al", "Si", "P", "S", "Cl", "Ar",
@@ -67,4 +67,4 @@ def get_group(a):
         raise Exception('Wrong atomic number!')
 
 def atomic_number_from_symbol(s:str):
-    return np.where(np.array(labels) == s)[0]
+    return np.where(np.array(symbols) == s)[0]
