@@ -637,8 +637,6 @@ class OgStructure:
             loginterval=loginterval,
         )
         md.run(steps=steps)
-        self.trajectory = md.trajectory
-        self.structure = self.trajectory[-1]
 
     def calculate_diffusivity(
         self, calculation_type="tracer", axis="all", ignore_n_images=0
