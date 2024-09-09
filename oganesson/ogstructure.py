@@ -1489,6 +1489,45 @@ class OgStructure:
     }
     """
 
+    def rotational_alignment_z_axis(self, a, b):
+        xyz = self.structure.cart_coords
+        x = xyz[:, 0]
+        y = xyz[:, 1]
+        z = xyz[:, 2]
+        print(self.structure.cart_coords)
+        r12X = x[a] - x[b]
+        r12Y = y[a] - y[b]
+        r12Z = z[a] - z[b]
+        thetaXY = 0
+        thetaXZ = 0
+        thetaXY = np.arccos(r12X / np.sqrt(r12X * r12X + r12Y * r12Y))
+        thetaXZ = -np.pi / 2 + np.arctan(r12Z / np.sqrt(r12X * r12X + r12Y * r12Y))
+
+        # Perform rotation 1: about z axis
+        for i in range(len(self.structure)):
+            oldx = x[i]
+            oldy = y[i]
+            x[i] = oldx * np.cos(thetaXY) - oldy * np.sin(thetaXY)
+            y[i] = oldx * np.sin(thetaXY) + oldy * np.cos(thetaXY)
+
+        # Perform rotation 2: about y axis
+        for i in range(len(self.structure)):
+            oldx = x[i]
+            oldz = z[i]
+            x[i] = oldx * np.cos(thetaXZ) + oldz * np.sin(thetaXZ)
+            z[i] = -oldx * np.sin(thetaXZ) + oldz * np.cos(thetaXZ)
+        xyz[:, 0] = x
+        xyz[:, 1] = y
+        xyz[:, 2] = z
+        self.structure = Structure(
+            lattice=self.structure.lattice,
+            species=self.structure.species,
+            coords=xyz,
+            coords_are_cartesian=True,
+        )
+        print(self.structure.cart_coords)
+        return self
+
     def make_supercell(self, l):
         self.structure = self.structure.make_supercell(l)
         return self
