@@ -28,6 +28,7 @@ setup(
                       'pymatgen',
                       'm3gnet',
                       'matgl',
+                      'bsym',
                     #   'gpaw',
                       'diffusivity'],
 

@@ -32,8 +32,6 @@ from oganesson.utilities.bonds_dictionary import bonds_dictionary
 from oganesson.utilities import atomic_data
 from ase.constraints import FixAtoms, ExternalForce
 from ase import units
-import torch
-import torch.nn as nn
 
 
 class OgStructure:
@@ -473,11 +471,7 @@ class OgStructure:
             potential = matgl.load_model(model)
             print("og:Loaded PES model:", model)
             potential.calc_stresses = True
-        if torch.cuda.device_count() > 1:
-            print(
-                "og:Potential model will use", torch.cuda.device_count(), "GPU cores."
-            )
-            model = nn.DataParallel(model)
+        
         relaxer = Relaxer(potential=potential, relax_cell=relax_cell)
         atoms = self.pymatgen_to_ase(self.structure)
         if fix_atoms_indices is not None:
