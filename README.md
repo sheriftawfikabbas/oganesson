@@ -4,17 +4,19 @@
 
 `oganesson` (`og` for short) is a python package that enables you to apply artificial intelligence workflows to your material discovery projects.
 
-
 ## Installation
 
-You can install `og` using the `pip` command as follows:
+`og` requires the installation of the following library:
+
+- DGL: https://www.dgl.ai/pages/start.html
+
+After installing the above library, you can install `og` using the `pip` command as follows:
 
 `pip install oganesson`
 
 # Features
 
 `og` is currently under active development. The following features are currently available.
-
 
 ## Machine learning descriptors
 

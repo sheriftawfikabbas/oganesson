@@ -240,37 +240,23 @@ class Xdatcar:
         traj = f.readlines()
         f.close()
 
-        lattice_list = traj[0:7]
+        lattice_list = traj[0:8]
         lattice_str = "".join(lattice_list)
         atom_counts = [int(x) for x in traj[6].split()]
         num_atoms = sum(atom_counts)
-        number_of_lines = num_atoms + 1
-        trajectory = traj[7:]
-        tot_num_images = int(len(trajectory) / number_of_lines)
+        number_of_lines = num_atoms
+        trajectory = traj
+        tot_num_images = int(len(trajectory) / (number_of_lines+8))
 
         print("file: ", self.filename, "total number of images:", str(tot_num_images))
 
-        trajectory_list = []
         trajectory_list_ang = []
-        num_steps = int(len(trajectory) / number_of_lines)
 
-        list_of_added = []
-
-        initial = string_to_ase(
-            lattice_str + "".join(traj[7 : 7 + num_atoms + 1]), 1e-8
-        )
-        initial_ang = string_to_ase(lattice_str + "".join(traj[7 : 7 + num_atoms + 1]))
-
-        list_of_added = []
-        atomic_numbers = np.unique(initial.get_atomic_numbers())
-
-        for i in range(0, num_steps):
+        for i in range(0, tot_num_images):
             positions_str = "".join(
-                traj[7 + i * (num_atoms + 1) : 7 + (i + 1) * (num_atoms + 1)]
+                traj[8*(i+1) + i * (num_atoms) : 8*(i+1) + (i + 1) * (num_atoms)]
             )
-            a = string_to_ase(lattice_str + positions_str, 1e-8)
             a_ang = string_to_ase(lattice_str + positions_str)
-            trajectory_list += [a]
             trajectory_list_ang += [a_ang]
 
         self.trajectory = trajectory_list_ang

@@ -1,5 +1,9 @@
 ## Changelog
 
+### 0.1.43 - 2024-09-30
+
+* Fix for Xdatcar reader
+* Misc fixes
 
 ### 0.1.42 - 2024-08-08
 
