@@ -232,35 +232,93 @@ class Xdatcar:
     def __init__(
         self,
         directory: str = "./",
-        filename: str = "XDATCAR",
+        filename="XDATCAR",
+        run_type: str="md",
+        skip = 1,
     ) -> None:
         self.directory = directory
-        self.filename = filename
-        f = open(self.filename, "r")
-        traj = f.readlines()
-        f.close()
+        if isinstance(filename, str):
+            self.filename = filename
+            f = open(self.filename, "r")
+            traj = f.readlines()
+            f.close()
 
-        lattice_list = traj[0:8]
-        lattice_str = "".join(lattice_list)
-        atom_counts = [int(x) for x in traj[6].split()]
-        num_atoms = sum(atom_counts)
-        number_of_lines = num_atoms
-        trajectory = traj
-        tot_num_images = int(len(trajectory) / (number_of_lines+8))
+            lattice_list = traj[0:8]
+            lattice_str = "".join(lattice_list)
+            atom_counts = [int(x) for x in traj[6].split()]
+            num_atoms = sum(atom_counts)
+            number_of_lines = num_atoms
+            if run_type == "opt":
+                trajectory = traj
+                tot_num_images = int(len(trajectory) / (number_of_lines+8))
 
-        print("file: ", self.filename, "total number of images:", str(tot_num_images))
+                print("file: ", self.filename, "total number of images:", str(tot_num_images))
 
-        trajectory_list_ang = []
+                trajectory_list_ang = []
 
-        for i in range(0, tot_num_images):
-            positions_str = "".join(
-                traj[8*(i+1) + i * (num_atoms) : 8*(i+1) + (i + 1) * (num_atoms)]
-            )
-            a_ang = string_to_ase(lattice_str + positions_str)
-            trajectory_list_ang += [a_ang]
+                for i in range(0, tot_num_images):
+                    positions_str = "".join(
+                        traj[8*(i+1) + i * (num_atoms) : 8*(i+1) + (i + 1) * (num_atoms)]
+                    )
+                    a_ang = string_to_ase(lattice_str + positions_str)
+                    trajectory_list_ang += [a_ang]
 
-        self.trajectory = trajectory_list_ang
+            else:
+                trajectory = traj[7:]
+                tot_num_images = int(len(trajectory) / (number_of_lines+1))
 
+                print("file: ", self.filename, "total number of images:", str(tot_num_images))
+
+                trajectory_list_ang = []
+
+                for i in range(0, tot_num_images):
+                    positions = traj[7 + i * (num_atoms + 1) : 7 + (i + 1) * (num_atoms + 1)]
+                    positions_str = "".join(
+                        positions[1:]
+                    )
+                    a_ang = string_to_ase(lattice_str + positions_str)
+                    trajectory_list_ang += [a_ang]
+            self.trajectory = trajectory_list_ang
+        else:
+            self.filename = filename
+            trajectory_list_ang = []
+            for filename in self.filename:
+                f = open(filename, "r")
+                traj = f.readlines()
+                f.close()
+
+                lattice_list = traj[0:8]
+                lattice_str = "".join(lattice_list)
+                atom_counts = [int(x) for x in traj[6].split()]
+                num_atoms = sum(atom_counts)
+                number_of_lines = num_atoms
+                if run_type == "opt":
+                    trajectory = traj
+                    tot_num_images = int(len(trajectory) / (number_of_lines+8))
+                    print("file: ", filename, "total number of images:", str(tot_num_images))
+                    for i in range(0, tot_num_images):
+                        positions_str = "".join(
+                            traj[8*(i+1) + i * (num_atoms) : 8*(i+1) + (i + 1) * (num_atoms)]
+                        )
+                        a_ang = string_to_ase(lattice_str + positions_str)
+                        trajectory_list_ang += [a_ang]
+                else:
+                    trajectory = traj[7:]
+                    tot_num_images = int(len(trajectory) / (number_of_lines+1))
+                    print("file: ", filename, "total number of images:", str(tot_num_images))
+                    for i in range(0, tot_num_images):
+                        positions = traj[7 + i * (num_atoms + 1) : 7 + (i + 1) * (num_atoms + 1)]
+                        positions_str = "".join(
+                            positions[1:]
+                        )
+                        a_ang = string_to_ase(lattice_str + positions_str)
+                        trajectory_list_ang += [a_ang]
+            
+            self.trajectory = []
+            for ti in range(len(trajectory_list_ang)):
+                if ti%skip == 0:
+                    self.trajectory += [trajectory_list_ang[ti]]        
+            
     def get_trajectory(self):
         return self.trajectory
 
